@@ -1,0 +1,32 @@
+import { TextField, Button, Typography, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from '@mui/material';
+import { useState } from 'react';
+
+function IsolationQuestionnaire({ isolation }) {
+  const [risk, setRisk] = useState('');
+  const [partsRequired, setPartsRequired] = useState('');
+  const [mocRequired, setMocRequired] = useState('');
+  const [engineeringSupport, setEngineeringSupport] = useState('');
+
+  return (
+    <div>
+      <Typography variant="h6">{isolation.id} - {isolation.description}</Typography>
+
+      <FormControl component="fieldset" sx={{ mt: 2 }}>
+        <FormLabel>Risk Level</FormLabel>
+        <RadioGroup row value={risk} onChange={(e) => setRisk(e.target.value)}>
+          <FormControlLabel value="Low" control={<Radio />} label="Low" />
+          <FormControlLabel value="Medium" control={<Radio />} label="Medium" />
+          <FormControlLabel value="High" control={<Radio />} label="High" />
+        </RadioGroup>
+      </FormControl>
+
+      <TextField fullWidth sx={{ mt: 2 }} label="Parts Required?" value={partsRequired} onChange={(e) => setPartsRequired(e.target.value)} />
+
+      <TextField fullWidth sx={{ mt: 2 }} label="MOC Required?" value={mocRequired} onChange={(e) => setMocRequired(e.target.value)} />
+
+      <TextField fullWidth sx={{ mt: 2 }} label="Engineering Support?" value={engineeringSupport} onChange={(e) => setEngineeringSupport(e.target.value)} />
+    </div>
+  );
+}
+
+export default IsolationQuestionnaire;

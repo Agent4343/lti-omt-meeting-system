@@ -1,0 +1,7 @@
+ID,Title,Description,Risk Level,System,Location
+CAHE-123-001,Pump Isolation,Main feed pump isolation for maintenance,High,Pump System,Building A
+CAHE-123-002,Valve Isolation,Control valve isolation for repair,Medium,Pump System,Building A
+CAHE-456-001,Compressor Isolation,Air compressor isolation for service,Critical,Compressor System,Building B
+CAHE-789-001,Heat Exchanger Isolation,Heat exchanger isolation for cleaning,Low,Heat Exchange System,Building C
+CAHE-123-003,Motor Isolation,Motor isolation for electrical work,High,Pump System,Building A
+CAHE-456-002,Filter Isolation,Air filter isolation for replacement,Medium,Compressor System,Building B
