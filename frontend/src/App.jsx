@@ -11,6 +11,7 @@ import LTIMasterListPage from './components/LTIMasterListPage';
 import MeetingCalendarPage from './components/MeetingCalendarPage';
 import LTIDashboard from './components/LTIDashboard';
 import AssetManagerReviewPage from './components/AssetManagerReviewPage';
+import AssetManagerDashboard from './components/AssetManagerDashboardSimple';
 import NavigationHeader from './components/NavigationHeader';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -24,7 +25,7 @@ function App() {
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <NavigationHeader />
           <Box component="main" sx={{ flexGrow: 1, pb: 4 }}>
-            <Routes>
+             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/people" element={<ManagePeoplePage />} />
               <Route path="/home" element={<MeetingPage />} />
@@ -35,6 +36,7 @@ function App() {
               <Route path="/lti-master" element={<LTIMasterListPage />} />
               <Route path="/lti-dashboard" element={<LTIDashboard />} />
               <Route path="/asset-manager-review" element={<AssetManagerReviewPage />} />
+              <Route path="/asset-manager-dashboard" element={<AssetManagerDashboard />} />
               <Route path="/calendar" element={<MeetingCalendarPage />} />
             </Routes>
           </Box>
