@@ -45,51 +45,56 @@ import BusinessIcon from '@mui/icons-material/Business';
 
 function IsolationQuestionnaire({ isolation, onDataChange }) {
   const [formData, setFormData] = useState({
-    // Core Assessment (Essential Questions Only)
+     // Core Risk Assessment
     riskLevel: 'N/A',
-    isolationDuration: '',
     businessImpact: 'N/A',
+    riskComments: '',
     
-    // Equipment Removal (Key Questions)
-    canRemoveEquipment: 'N/A',
-    removalComplexity: 'N/A',
-    
-    // MOC Requirements (Essential)
+    // MOC Management
     mocRequired: 'N/A',
     mocNumber: '',
     mocStatus: 'N/A',
+    mocComments: '',
     
-    // Parts Assessment (Critical)
+    // Parts & Materials Management (ENHANCED)
     partsRequired: 'N/A',
+    partsDescription: '',
     partsExpectedDate: '',
+    partsStatus: 'Not Assessed',
+    partsComments: '',
     
-    // Support Requirements (Key)
+    // Equipment Disconnection/Removal (NEW SECTION)
+    equipmentDisconnectionRequired: 'N/A',
+    equipmentRemovalRequired: 'N/A', 
+    disconnectionComments: '',
+    
+    // Support & Resources
     supportRequired: 'N/A',
+    supportType: 'N/A',
+    supportComments: '',
     
-    // Actions & Comments
+    // Timeline & Planning (ENHANCED)
+    plannedResolutionDate: '',
+    workWindowRequired: 'N/A',
+    priorityLevel: 'N/A',
+    
+    // Action Management
     actionRequired: 'N/A',
+    nextReviewDate: '',
     comments: '',
     
     // WMS Manual Compliance Fields
-    // Periodic Risk Assessment (WMS Manual Requirement)
     corrosionRisk: 'N/A',
+    corrosionRiskComment: '',
     deadLegsRisk: 'N/A',
+    deadLegsRiskComment: '',
     automationLossRisk: 'N/A',
-    
-    // Structured Evaluation Fields
-    repairSchedule: '',
-    disconnectionRequired: 'N/A',
-    priorityLevel: 'N/A',
+    automationLossRiskComment: '',
     
     // Asset Manager Review (6-month escalation)
     assetManagerReviewRequired: 'N/A',
     escalationReason: '',
     resolutionStrategy: 'N/A',
-    
-    // Management Reporting Fields
-    reviewStatus: 'Reviewed',
-    nextReviewDate: '',
-    managementNotes: '',
     
     // Action Items
     actionItems: []
@@ -229,124 +234,172 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
     }
     
     if (existingData) {
-      // Load existing data for this isolation - INCLUDING WMS Manual fields
+       // Load existing data for this isolation - INCLUDING all new fields
       setFormData({
-        // Core Assessment
+        // Core Risk Assessment
         riskLevel: existingData.riskLevel || 'N/A',
-        isolationDuration: existingData.isolationDuration || '',
         businessImpact: existingData.businessImpact || 'N/A',
-        canRemoveEquipment: existingData.canRemoveEquipment || 'N/A',
-        removalComplexity: existingData.removalComplexity || 'N/A',
+        riskComments: existingData.riskComments || '',
+        
+        // MOC Management
         mocRequired: existingData.mocRequired || 'N/A',
         mocNumber: existingData.mocNumber || '',
         mocStatus: existingData.mocStatus || 'N/A',
+        mocComments: existingData.mocComments || '',
+        
+        // Parts & Materials Management
         partsRequired: existingData.partsRequired || 'N/A',
+        partsDescription: existingData.partsDescription || '',
         partsExpectedDate: existingData.partsExpectedDate || '',
+        partsStatus: existingData.partsStatus || 'Not Assessed',
+        partsComments: existingData.partsComments || '',
+        
+        // Equipment Disconnection/Removal
+        equipmentDisconnectionRequired: existingData.equipmentDisconnectionRequired || 'N/A',
+        equipmentRemovalRequired: existingData.equipmentRemovalRequired || 'N/A',
+        disconnectionComments: existingData.disconnectionComments || '',
+        
+        // Support & Resources
         supportRequired: existingData.supportRequired || 'N/A',
+        supportType: existingData.supportType || 'N/A',
+        supportComments: existingData.supportComments || '',
+        
+        // Timeline & Planning
+        plannedResolutionDate: existingData.plannedResolutionDate || '',
+        workWindowRequired: existingData.workWindowRequired || 'N/A',
+        priorityLevel: existingData.priorityLevel || 'N/A',
+        
+        // Action Management
         actionRequired: existingData.actionRequired || 'N/A',
+        nextReviewDate: existingData.nextReviewDate || '',
         comments: existingData.comments || '',
         
         // WMS Manual Compliance Fields
         corrosionRisk: existingData.corrosionRisk || 'N/A',
+        corrosionRiskComment: existingData.corrosionRiskComment || '',
         deadLegsRisk: existingData.deadLegsRisk || 'N/A',
+        deadLegsRiskComment: existingData.deadLegsRiskComment || '',
         automationLossRisk: existingData.automationLossRisk || 'N/A',
-        
-        // Structured Evaluation Fields
-        repairSchedule: existingData.repairSchedule || '',
-        disconnectionRequired: existingData.disconnectionRequired || 'N/A',
-        priorityLevel: existingData.priorityLevel || 'N/A',
+        automationLossRiskComment: existingData.automationLossRiskComment || '',
         
         // Asset Manager Review Fields
         assetManagerReviewRequired: existingData.assetManagerReviewRequired || 'N/A',
         escalationReason: existingData.escalationReason || '',
         resolutionStrategy: existingData.resolutionStrategy || 'N/A',
         
-        // Management Reporting Fields
-        reviewStatus: existingData.reviewStatus || 'Reviewed',
-        nextReviewDate: existingData.nextReviewDate || '',
-        managementNotes: existingData.managementNotes || '',
-        
         // Action Items
         actionItems: existingData.actionItems || []
       });
     } else if (previousData) {
-      // If no current data but we have previous data, populate with previous data
+       // If no current data but we have previous data, populate with previous data
       setFormData({
-        // Core Assessment
+        // Core Risk Assessment
         riskLevel: previousData.riskLevel || 'N/A',
-        isolationDuration: previousData.isolationDuration || '',
         businessImpact: previousData.businessImpact || 'N/A',
-        canRemoveEquipment: previousData.canRemoveEquipment || 'N/A',
-        removalComplexity: previousData.removalComplexity || 'N/A',
+        riskComments: previousData.riskComments || '',
+        
+        // MOC Management
         mocRequired: previousData.mocRequired || 'N/A',
         mocNumber: previousData.mocNumber || '',
         mocStatus: previousData.mocStatus || 'N/A',
+        mocComments: previousData.mocComments || '',
+        
+        // Parts & Materials Management
         partsRequired: previousData.partsRequired || 'N/A',
+        partsDescription: previousData.partsDescription || '',
         partsExpectedDate: previousData.partsExpectedDate || '',
+        partsStatus: previousData.partsStatus || 'Not Assessed',
+        partsComments: previousData.partsComments || '',
+        
+        // Equipment Disconnection/Removal
+        equipmentDisconnectionRequired: previousData.equipmentDisconnectionRequired || 'N/A',
+        equipmentRemovalRequired: previousData.equipmentRemovalRequired || 'N/A',
+        disconnectionComments: previousData.disconnectionComments || '',
+        
+        // Support & Resources
         supportRequired: previousData.supportRequired || 'N/A',
+        supportType: previousData.supportType || 'N/A',
+        supportComments: previousData.supportComments || '',
+        
+        // Timeline & Planning
+        plannedResolutionDate: previousData.plannedResolutionDate || '',
+        workWindowRequired: previousData.workWindowRequired || 'N/A',
+        priorityLevel: previousData.priorityLevel || 'N/A',
+        
+        // Action Management
         actionRequired: previousData.actionRequired || 'N/A',
+        nextReviewDate: previousData.nextReviewDate || '',
         comments: previousData.comments || '',
         
         // WMS Manual Compliance Fields
         corrosionRisk: previousData.corrosionRisk || 'N/A',
+        corrosionRiskComment: previousData.corrosionRiskComment || '',
         deadLegsRisk: previousData.deadLegsRisk || 'N/A',
+        deadLegsRiskComment: previousData.deadLegsRiskComment || '',
         automationLossRisk: previousData.automationLossRisk || 'N/A',
-        
-        // Structured Evaluation Fields
-        repairSchedule: previousData.repairSchedule || '',
-        disconnectionRequired: previousData.disconnectionRequired || 'N/A',
-        priorityLevel: previousData.priorityLevel || 'N/A',
+        automationLossRiskComment: previousData.automationLossRiskComment || '',
         
         // Asset Manager Review Fields
         assetManagerReviewRequired: previousData.assetManagerReviewRequired || 'N/A',
         escalationReason: previousData.escalationReason || '',
         resolutionStrategy: previousData.resolutionStrategy || 'N/A',
         
-        // Management Reporting Fields
-        reviewStatus: 'Reviewed',
-        nextReviewDate: previousData.nextReviewDate || '',
-        managementNotes: previousData.managementNotes || '',
-        
         // Action Items
         actionItems: previousData.actionItems || []
       });
     } else {
-      // Reset to defaults for new isolation - INCLUDING WMS Manual fields
+       // Reset to defaults for new isolation - INCLUDING all new fields
       setFormData({
-        // Core Assessment
+        // Core Risk Assessment
         riskLevel: 'N/A',
-        isolationDuration: '',
         businessImpact: 'N/A',
-        canRemoveEquipment: 'N/A',
-        removalComplexity: 'N/A',
+        riskComments: '',
+        
+        // MOC Management
         mocRequired: 'N/A',
         mocNumber: '',
         mocStatus: 'N/A',
+        mocComments: '',
+        
+        // Parts & Materials Management
         partsRequired: 'N/A',
+        partsDescription: '',
         partsExpectedDate: '',
+        partsStatus: 'Not Assessed',
+        partsComments: '',
+        
+        // Equipment Disconnection/Removal
+        equipmentDisconnectionRequired: 'N/A',
+        equipmentRemovalRequired: 'N/A',
+        disconnectionComments: '',
+        
+        // Support & Resources
         supportRequired: 'N/A',
+        supportType: 'N/A',
+        supportComments: '',
+        
+        // Timeline & Planning
+        plannedResolutionDate: '',
+        workWindowRequired: 'N/A',
+        priorityLevel: 'N/A',
+        
+        // Action Management
         actionRequired: 'N/A',
+        nextReviewDate: '',
         comments: '',
         
         // WMS Manual Compliance Fields
         corrosionRisk: 'N/A',
+        corrosionRiskComment: '',
         deadLegsRisk: 'N/A',
+        deadLegsRiskComment: '',
         automationLossRisk: 'N/A',
-        
-        // Structured Evaluation Fields
-        repairSchedule: '',
-        disconnectionRequired: 'N/A',
-        priorityLevel: 'N/A',
+        automationLossRiskComment: '',
         
         // Asset Manager Review Fields
         assetManagerReviewRequired: 'N/A',
         escalationReason: '',
         resolutionStrategy: 'N/A',
-        
-        // Management Reporting Fields
-        reviewStatus: 'Reviewed',
-        nextReviewDate: '',
-        managementNotes: '',
         
         // Action Items
         actionItems: []
@@ -625,219 +678,541 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
         </Alert>
       )}
 
-      {/* Essential Questions Only - Clean & Focused */}
-      <Grid container spacing={3}>
-        {/* Column 1 - Core Assessment */}
-        <Grid item xs={12} md={6}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+       {/* INDUSTRY STANDARD LTI RISK MANAGEMENT QUESTIONS */}
+      
+      {/* Section 1: Risk Assessment */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <SecurityIcon sx={{ mr: 1, color: 'error.main' }} />
+            Section 1: Risk Assessment
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Overall Risk Level</FormLabel>
+                <RadioGroup 
+                  row 
+                  value={formData.riskLevel} 
+                  onChange={(e) => handleChange('riskLevel', e.target.value)}
+                >
+                  <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
+                  <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
+                  <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
+                  <FormControlLabel value="Critical" control={<Radio size="small" />} label="Critical" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
             
-            {/* Risk Level */}
-            <FormControl component="fieldset" size="small">
-              <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Overall Risk Level</FormLabel>
-              <RadioGroup 
-                row 
-                value={formData.riskLevel} 
-                onChange={(e) => handleChange('riskLevel', e.target.value)}
-              >
-                <FormControlLabel value="N/A" control={<Radio size="small" />} label="N/A" />
-                <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
-                <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
-                <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
-                <FormControlLabel value="Critical" control={<Radio size="small" />} label="Critical" />
-              </RadioGroup>
-              {/* Comment field for Risk Level - Show ONLY if not N/A AND not None */}
-              {formData.riskLevel && formData.riskLevel !== 'N/A' && formData.riskLevel !== 'None' && (
-                <TextField 
-                  fullWidth 
-                  size="small"
-                  label={`Risk Level Comment (${formData.riskLevel})`}
-                  value={formData.riskLevelComment || ''} 
-                  onChange={(e) => handleChange('riskLevelComment', e.target.value)}
-                  placeholder="Please explain the risk level assessment..."
-                  multiline
-                  rows={2}
-                  sx={{ mt: 1 }}
-                />
-              )}
-            </FormControl>
-
-            {/* MOC Required */}
-            <FormControl component="fieldset" size="small">
-              <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>MOC Required?</FormLabel>
-              <RadioGroup 
-                row
-                value={formData.mocRequired} 
-                onChange={(e) => handleChange('mocRequired', e.target.value)}
-              >
-                <FormControlLabel value="N/A" control={<Radio size="small" />} label="N/A" />
-                <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
-                <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
-              </RadioGroup>
-              {/* Comment field for MOC Required - Show ONLY if Yes or No (not N/A) */}
-              {formData.mocRequired && formData.mocRequired !== 'N/A' && (
-                <TextField 
-                  fullWidth 
-                  size="small"
-                  label={`MOC Comment (${formData.mocRequired})`}
-                  value={formData.mocRequiredComment || ''} 
-                  onChange={(e) => handleChange('mocRequiredComment', e.target.value)}
-                  placeholder="Please explain why MOC is or is not required..."
-                  multiline
-                  rows={2}
-                  sx={{ mt: 1 }}
-                />
-              )}
-            </FormControl>
-
-            {/* MOC Number - Show only if MOC is required */}
-            {formData.mocRequired === 'Yes' && (
+            <Grid item xs={12} md={6}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Business Impact</FormLabel>
+                <RadioGroup 
+                  row 
+                  value={formData.businessImpact} 
+                  onChange={(e) => handleChange('businessImpact', e.target.value)}
+                >
+                  <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
+                  <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
+                  <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
+                  <FormControlLabel value="Critical" control={<Radio size="small" />} label="Critical" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12}>
               <TextField 
                 fullWidth 
                 size="small"
-                label="MOC Number" 
-                value={formData.mocNumber || ''} 
-                onChange={(e) => handleChange('mocNumber', e.target.value)}
-                placeholder="Enter MOC number"
+                label="Risk Assessment Comments"
+                value={formData.riskComments} 
+                onChange={(e) => handleChange('riskComments', e.target.value)}
+                placeholder="Explain risk level and business impact assessment..."
+                multiline
+                rows={2}
               />
-            )}
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
-            {/* Action Required */}
-            <FormControl component="fieldset" size="small">
-              <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required?</FormLabel>
-              <RadioGroup 
-                row
-                value={formData.actionRequired} 
-                onChange={(e) => handleChange('actionRequired', e.target.value)}
-              >
-                <FormControlLabel value="N/A" control={<Radio size="small" />} label="N/A" />
-                <FormControlLabel value="None" control={<Radio size="small" />} label="None" />
-                <FormControlLabel value="Monitor" control={<Radio size="small" />} label="Monitor" />
-                <FormControlLabel value="Plan Work" control={<Radio size="small" />} label="Plan Work" />
-                <FormControlLabel value="Urgent" control={<Radio size="small" />} label="Urgent" />
-              </RadioGroup>
-              {/* Comment field for Action Required - Show ONLY if not N/A AND not None */}
-              {formData.actionRequired && formData.actionRequired !== 'N/A' && formData.actionRequired !== 'None' && (
-                <TextField 
-                  fullWidth 
-                  size="small"
-                  label={`Action Comment (${formData.actionRequired})`}
-                  value={formData.actionRequiredComment || ''} 
-                  onChange={(e) => handleChange('actionRequiredComment', e.target.value)}
-                  placeholder="Please explain the action required and timeline..."
-                  multiline
-                  rows={2}
-                  sx={{ mt: 1 }}
-                />
-              )}
-            </FormControl>
-          </Box>
-        </Grid>
-
-        {/* Column 2 - WMS Manual Risk Assessment */}
-        <Grid item xs={12} md={6}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'warning.main', mb: 1 }}>
-              WMS Manual Risk Assessment
-            </Typography>
+      {/* Section 2: MOC Management */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <AssignmentIcon sx={{ mr: 1, color: 'primary.main' }} />
+            Section 2: MOC (Management of Change)
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Is MOC Required?</FormLabel>
+                <RadioGroup 
+                  value={formData.mocRequired} 
+                  onChange={(e) => handleChange('mocRequired', e.target.value)}
+                >
+                  <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="Under Review" control={<Radio size="small" />} label="Under Review" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
             
+            {formData.mocRequired === 'Yes' && (
+              <>
+                <Grid item xs={12} md={4}>
+                  <TextField 
+                    fullWidth 
+                    size="small"
+                    label="MOC Number" 
+                    value={formData.mocNumber} 
+                    onChange={(e) => handleChange('mocNumber', e.target.value)}
+                    placeholder="Enter MOC number"
+                  />
+                </Grid>
+                
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>MOC Status</InputLabel>
+                    <Select
+                      value={formData.mocStatus}
+                      onChange={(e) => handleChange('mocStatus', e.target.value)}
+                      label="MOC Status"
+                    >
+                      <MenuItem value="Submitted">Submitted</MenuItem>
+                      <MenuItem value="Approved">Approved</MenuItem>
+                      <MenuItem value="In Progress">In Progress</MenuItem>
+                      <MenuItem value="Completed">Completed</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </>
+            )}
+            
+            <Grid item xs={12}>
+              <TextField 
+                fullWidth 
+                size="small"
+                label="MOC Comments"
+                value={formData.mocComments} 
+                onChange={(e) => handleChange('mocComments', e.target.value)}
+                placeholder="MOC justification, timeline, barriers, etc."
+                multiline
+                rows={2}
+              />
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Section 3: Parts & Materials Management (ENHANCED) */}
+      <Card sx={{ mb: 3, bgcolor: '#e8f5e8' }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <BuildIcon sx={{ mr: 1, color: 'success.main' }} />
+            Section 3: Parts & Materials ⭐ ENHANCED
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={3}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Are Parts Required?</FormLabel>
+                <RadioGroup 
+                  value={formData.partsRequired} 
+                  onChange={(e) => handleChange('partsRequired', e.target.value)}
+                >
+                  <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="Unknown" control={<Radio size="small" />} label="Unknown" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            {(formData.partsRequired === 'Yes' || formData.partsRequired === 'Unknown') && (
+              <>
+                <Grid item xs={12} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Parts Status</InputLabel>
+                    <Select
+                      value={formData.partsStatus}
+                      onChange={(e) => handleChange('partsStatus', e.target.value)}
+                      label="Parts Status"
+                    >
+                      <MenuItem value="Not Assessed">Not Assessed</MenuItem>
+                      <MenuItem value="Not Ordered">Not Ordered</MenuItem>
+                      <MenuItem value="Ordered">Ordered</MenuItem>
+                      <MenuItem value="In Transit">In Transit</MenuItem>
+                      <MenuItem value="Available">Available</MenuItem>
+                      <MenuItem value="Installed">Installed</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} md={3}>
+                  <TextField 
+                    fullWidth 
+                    size="small"
+                    type="date"
+                    label="Expected Part Arrival Date ⭐"
+                    value={formData.partsExpectedDate} 
+                    onChange={(e) => handleChange('partsExpectedDate', e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    helperText="When parts expected to arrive"
+                  />
+                </Grid>
+                
+                <Grid item xs={12} md={3}>
+                  <TextField 
+                    fullWidth 
+                    size="small"
+                    label="Parts Description"
+                    value={formData.partsDescription} 
+                    onChange={(e) => handleChange('partsDescription', e.target.value)}
+                    placeholder="Brief description of parts needed"
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <TextField 
+                    fullWidth 
+                    size="small"
+                    label="Parts Comments"
+                    value={formData.partsComments} 
+                    onChange={(e) => handleChange('partsComments', e.target.value)}
+                    placeholder="Vendor info, lead time, alternatives, procurement status..."
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+              </>
+            )}
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Section 4: Equipment Disconnection/Removal (NEW SECTION) */}
+      <Card sx={{ mb: 3, bgcolor: '#fff3e0' }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <BuildIcon sx={{ mr: 1, color: 'warning.main' }} />
+            Section 4: Equipment Management ⭐ NEW
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Equipment Disconnection Required?</FormLabel>
+                <RadioGroup 
+                  value={formData.equipmentDisconnectionRequired} 
+                  onChange={(e) => handleChange('equipmentDisconnectionRequired', e.target.value)}
+                >
+                  <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="Partially" control={<Radio size="small" />} label="Partially" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Equipment Removal Required?</FormLabel>
+                <RadioGroup 
+                  value={formData.equipmentRemovalRequired} 
+                  onChange={(e) => handleChange('equipmentRemovalRequired', e.target.value)}
+                >
+                  <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="Temporarily" control={<Radio size="small" />} label="Temporarily" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <TextField 
+                fullWidth 
+                size="small"
+                label="Disconnection/Removal Comments"
+                value={formData.disconnectionComments} 
+                onChange={(e) => handleChange('disconnectionComments', e.target.value)}
+                placeholder="Complexity, resources needed, timeline..."
+                multiline
+                rows={3}
+              />
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Section 5: Support & Resources */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <BusinessIcon sx={{ mr: 1, color: 'info.main' }} />
+            Section 5: Support & Resources
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Support Required?</FormLabel>
+                <RadioGroup 
+                  value={formData.supportRequired} 
+                  onChange={(e) => handleChange('supportRequired', e.target.value)}
+                >
+                  <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="Scheduled" control={<Radio size="small" />} label="Scheduled" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            {formData.supportRequired === 'Yes' && (
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Type of Support</InputLabel>
+                  <Select
+                    value={formData.supportType}
+                    onChange={(e) => handleChange('supportType', e.target.value)}
+                    label="Type of Support"
+                  >
+                    <MenuItem value="Contractor">Contractor</MenuItem>
+                    <MenuItem value="Maintenance">Maintenance</MenuItem>
+                    <MenuItem value="Engineering">Engineering</MenuItem>
+                    <MenuItem value="Operations">Operations</MenuItem>
+                    <MenuItem value="Multiple">Multiple</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+            
+            <Grid item xs={12} md={4}>
+              <TextField 
+                fullWidth 
+                size="small"
+                label="Support Comments"
+                value={formData.supportComments} 
+                onChange={(e) => handleChange('supportComments', e.target.value)}
+                placeholder="Who, when, what type of support..."
+                multiline
+                rows={2}
+              />
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Section 6: Timeline & Planning (ENHANCED) */}
+      <Card sx={{ mb: 3, bgcolor: '#e3f2fd' }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <ScheduleIcon sx={{ mr: 1, color: 'primary.main' }} />
+            Section 6: Timeline & Planning ⭐ ENHANCED
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={3}>
+              <TextField 
+                fullWidth 
+                size="small"
+                type="date"
+                label="Planned Resolution Date ⭐"
+                value={formData.plannedResolutionDate} 
+                onChange={(e) => handleChange('plannedResolutionDate', e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                helperText="Target completion date"
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={3}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Work Window Required?</FormLabel>
+                <RadioGroup 
+                  value={formData.workWindowRequired} 
+                  onChange={(e) => handleChange('workWindowRequired', e.target.value)}
+                >
+                  <FormControlLabel value="Yes" control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="No" control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="Shutdown Only" control={<Radio size="small" />} label="Shutdown Only" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Priority Level</InputLabel>
+                <Select
+                  value={formData.priorityLevel}
+                  onChange={(e) => handleChange('priorityLevel', e.target.value)}
+                  label="Priority Level"
+                >
+                  <MenuItem value="Low">Low</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                  <MenuItem value="Critical">Critical</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={3}>
+              <TextField 
+                fullWidth 
+                size="small"
+                type="date"
+                label="Next Review Date"
+                value={formData.nextReviewDate} 
+                onChange={(e) => handleChange('nextReviewDate', e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                helperText="When to review again"
+              />
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Section 7: Action Management */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <ReportIcon sx={{ mr: 1, color: 'secondary.main' }} />
+            Section 7: Action Management
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Action Required?</FormLabel>
+                <RadioGroup 
+                  value={formData.actionRequired} 
+                  onChange={(e) => handleChange('actionRequired', e.target.value)}
+                >
+                  <FormControlLabel value="None" control={<Radio size="small" />} label="None" />
+                  <FormControlLabel value="Monitor" control={<Radio size="small" />} label="Monitor" />
+                  <FormControlLabel value="Plan Work" control={<Radio size="small" />} label="Plan Work" />
+                  <FormControlLabel value="Urgent" control={<Radio size="small" />} label="Urgent" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField 
+                fullWidth 
+                size="small"
+                label="Comments & Additional Notes"
+                value={formData.comments} 
+                onChange={(e) => handleChange('comments', e.target.value)}
+                placeholder="Key observations, concerns, recommendations..."
+                multiline
+                rows={3}
+              />
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Section 8: WMS Manual Risk Assessment */}
+      <Card sx={{ mb: 3, bgcolor: '#fff3e0', border: '2px solid #ff9800' }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <WarningIcon sx={{ mr: 1, color: 'warning.main' }} />
+            Section 8: WMS Manual Risk Assessment
+          </Typography>
+          
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <strong>WMS Manual Requirement:</strong> All LTIs must be assessed for these specific risk categories.
+          </Alert>
+          
+          <Grid container spacing={3}>
             {/* Corrosion Risk */}
-            <FormControl component="fieldset" size="small">
-              <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Corrosion Risk</FormLabel>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                Risk of metal degradation due to isolation
-              </Typography>
-              <RadioGroup 
-                row
-                value={formData.corrosionRisk} 
-                onChange={(e) => handleChange('corrosionRisk', e.target.value)}
-              >
-                <FormControlLabel value="N/A" control={<Radio size="small" />} label="N/A" />
-                <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
-                <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
-                <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
-              </RadioGroup>
-              {/* Comment field for Corrosion Risk - Show if not N/A */}
-              {formData.corrosionRisk && formData.corrosionRisk !== 'N/A' && (
+            <Grid item xs={12} md={4}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Corrosion Risk</FormLabel>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Risk of metal degradation
+                </Typography>
+                <RadioGroup 
+                  value={formData.corrosionRisk} 
+                  onChange={(e) => handleChange('corrosionRisk', e.target.value)}
+                >
+                  <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
+                  <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
+                  <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
+                </RadioGroup>
                 <TextField 
                   fullWidth 
                   size="small"
-                  label={`Corrosion Risk Comment (${formData.corrosionRisk})`}
-                  value={formData.corrosionRiskComment || ''} 
+                  label="Corrosion Risk Comments"
+                  value={formData.corrosionRiskComment} 
                   onChange={(e) => handleChange('corrosionRiskComment', e.target.value)}
-                  placeholder="Please explain the corrosion risk assessment..."
+                  placeholder="Explain assessment..."
                   multiline
                   rows={2}
                   sx={{ mt: 1 }}
                 />
-              )}
-            </FormControl>
-
+              </FormControl>
+            </Grid>
+            
             {/* Dead Legs Risk */}
-            <FormControl component="fieldset" size="small">
-              <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Dead Legs Risk</FormLabel>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                Risk from stagnant fluid in isolated sections
-              </Typography>
-              <RadioGroup 
-                row
-                value={formData.deadLegsRisk} 
-                onChange={(e) => handleChange('deadLegsRisk', e.target.value)}
-              >
-                <FormControlLabel value="N/A" control={<Radio size="small" />} label="N/A" />
-                <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
-                <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
-                <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
-              </RadioGroup>
-              {/* Comment field for Dead Legs Risk - Show if not N/A */}
-              {formData.deadLegsRisk && formData.deadLegsRisk !== 'N/A' && (
+            <Grid item xs={12} md={4}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Dead Legs Risk</FormLabel>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Risk from stagnant fluid
+                </Typography>
+                <RadioGroup 
+                  value={formData.deadLegsRisk} 
+                  onChange={(e) => handleChange('deadLegsRisk', e.target.value)}
+                >
+                  <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
+                  <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
+                  <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
+                </RadioGroup>
                 <TextField 
                   fullWidth 
                   size="small"
-                  label={`Dead Legs Risk Comment (${formData.deadLegsRisk})`}
-                  value={formData.deadLegsRiskComment || ''} 
+                  label="Dead Legs Risk Comments"
+                  value={formData.deadLegsRiskComment} 
                   onChange={(e) => handleChange('deadLegsRiskComment', e.target.value)}
-                  placeholder="Please explain the dead legs risk assessment..."
+                  placeholder="Explain assessment..."
                   multiline
                   rows={2}
                   sx={{ mt: 1 }}
                 />
-              )}
-            </FormControl>
-
+              </FormControl>
+            </Grid>
+            
             {/* Automation Loss Risk */}
-            <FormControl component="fieldset" size="small">
-              <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Automation Loss Risk</FormLabel>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                Risk from loss of control systems, alarms, or safety interlocks
-              </Typography>
-              <RadioGroup 
-                row
-                value={formData.automationLossRisk} 
-                onChange={(e) => handleChange('automationLossRisk', e.target.value)}
-              >
-                <FormControlLabel value="N/A" control={<Radio size="small" />} label="N/A" />
-                <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
-                <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
-                <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
-              </RadioGroup>
-              {/* Comment field for Automation Loss Risk - Show if not N/A */}
-              {formData.automationLossRisk && formData.automationLossRisk !== 'N/A' && (
+            <Grid item xs={12} md={4}>
+              <FormControl component="fieldset" size="small" fullWidth>
+                <FormLabel sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Automation Loss Risk</FormLabel>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Risk from control system loss
+                </Typography>
+                <RadioGroup 
+                  value={formData.automationLossRisk} 
+                  onChange={(e) => handleChange('automationLossRisk', e.target.value)}
+                >
+                  <FormControlLabel value="Low" control={<Radio size="small" />} label="Low" />
+                  <FormControlLabel value="Medium" control={<Radio size="small" />} label="Medium" />
+                  <FormControlLabel value="High" control={<Radio size="small" />} label="High" />
+                </RadioGroup>
                 <TextField 
                   fullWidth 
                   size="small"
-                  label={`Automation Loss Risk Comment (${formData.automationLossRisk})`}
-                  value={formData.automationLossRiskComment || ''} 
+                  label="Automation Loss Risk Comments"
+                  value={formData.automationLossRiskComment} 
                   onChange={(e) => handleChange('automationLossRiskComment', e.target.value)}
-                  placeholder="Please explain the automation loss risk assessment..."
+                  placeholder="Explain assessment..."
                   multiline
                   rows={2}
                   sx={{ mt: 1 }}
                 />
-              )}
-            </FormControl>
-          </Box>
-        </Grid>
-      </Grid>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* Asset Manager 6-Month Review (Show only for LTIs over 6 months) */}
       {(ltiAge.includes('month') && parseInt(ltiAge) >= 6) || ltiAge.includes('year') ? (
