@@ -30,9 +30,37 @@ const emailLimiter = rateLimit({
 
 app.use(limiter);
 
-// CORS configuration
+// CORS configuration - Allow multiple frontend URLs for different environments
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  'http://localhost:3001', 
+  'https://localhost:3000',
+  'https://localhost:3001'
+];
+
+// Add SharePoint URLs if in SharePoint mode
+if (process.env.SHAREPOINT_SITE_URL) {
+  allowedOrigins.push(process.env.SHAREPOINT_SITE_URL);
+}
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is allowed
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // In development, allow all origins for testing
+      if (process.env.NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
   credentials: true
 }));
 

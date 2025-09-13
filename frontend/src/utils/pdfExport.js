@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable'; // Plugin auto-attaches to jsPDF instance
 import { APP_CONFIG } from './constants';
 
 /**
@@ -195,7 +195,10 @@ export class PDFExportService {
       this.doc.text('Isolation Details', this.margin, this.currentY);
       this.currentY += 10;
       
-      // Add each isolation as a detailed section instead of a table
+      // Create summary table first
+      this.addIsolationSummaryTable(isolationDetails);
+      
+      // Add detailed sections for each isolation
       isolationDetails.forEach((isolation, index) => {
         this.addIsolationDetailSection(isolation, index);
       });
@@ -203,6 +206,56 @@ export class PDFExportService {
       return true;
     } catch (error) {
       console.error('PDF isolation details error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Add isolation summary table using autoTable
+   */
+  addIsolationSummaryTable(isolationDetails) {
+    try {
+      this.checkPageSpace(60);
+      
+      const tableData = isolationDetails.map(isolation => [
+        isolation.id || 'N/A',
+        this.truncateText(isolation.description, 25),
+        isolation.riskLevel || 'N/A',
+        isolation.ltiAge || 'N/A',
+        isolation.mocRequired || 'N/A',
+        isolation.actionRequired || 'N/A'
+      ]);
+      
+      // Use autoTable plugin - now properly attached to jsPDF instance
+      this.doc.autoTable({
+        head: [['Isolation ID', 'Description', 'Risk Level', 'LTI Age', 'MOC Required', 'Action Required']],
+        body: tableData,
+        startY: this.currentY,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 25 }, // Isolation ID
+          1: { cellWidth: 45 }, // Description
+          2: { cellWidth: 25 }, // Risk Level
+          3: { cellWidth: 20 }, // LTI Age
+          4: { cellWidth: 25 }, // MOC Required
+          5: { cellWidth: 30 }  // Action Required
+        },
+        margin: { left: this.margin, right: this.margin }
+      });
+      
+      // Update currentY position after table
+      this.currentY = this.doc.lastAutoTable.finalY + 15;
+      
+      return true;
+    } catch (error) {
+      console.error('PDF table generation error:', error);
+      // Fallback to text-based display if autoTable fails
+      this.doc.setFontSize(10);
+      this.doc.text('Error generating table. Detailed information follows below.', this.margin, this.currentY);
+      this.currentY += 10;
       return false;
     }
   }
@@ -727,11 +780,12 @@ export class PDFExportService {
         throw new Error('Meeting data is required');
       }
       
-      // DEBUG: Log the actual meeting data being passed
-      console.log('🔍 PDF Export - ACTUAL meeting data received:', JSON.stringify(meeting, null, 2));
-      console.log('🔍 PDF Export - Meeting keys:', Object.keys(meeting));
-      console.log('🔍 PDF Export - Isolations array:', meeting.isolations);
-      console.log('🔍 PDF Export - Responses object:', meeting.responses);
+      // Log basic info for debugging (production-safe)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('PDF Export - Processing meeting data with', Object.keys(meeting).length, 'properties');
+        console.log('PDF Export - Isolations count:', (meeting.isolations || []).length);
+        console.log('PDF Export - Responses count:', Object.keys(meeting.responses || {}).length);
+      }
       
       // Initialize document
       if (!this.initializeDocument()) {
