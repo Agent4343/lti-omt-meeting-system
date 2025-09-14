@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Test Data - LTI OMT Meeting System</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .danger {
+            background: linear-gradient(135deg, #f56565 0%, #ed64a6 100%);
+        }
+        .success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+        .info {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #48bb78;
+        }
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #f56565;
+        }
+        .status.info {
+            background: #bee3f8;
+            color: #2c5282;
+            border-left: 4px solid #4299e1;
+        }
+        .data-preview {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+            color: #2d3748;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 LTI OMT Meeting System - Test Data Manager</h1>
+        
+        <div id="status" class="status info">
+            Ready to load test data. Choose an option below.
+        </div>
+
+        <div class="button-group">
+            <button onclick="loadComprehensiveTestData()" class="success">
+                📊 Load Comprehensive Test Data
+            </button>
+            <button onclick="loadAssetManagerTestData()" class="info">
+                👥 Load Asset Manager Test Data
+            </button>
+            <button onclick="viewCurrentData()">
+                👁️ View Current Data
+            </button>
+            <button onclick="clearAllData()" class="danger">
+                🗑️ Clear All Data
+            </button>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-label">Total Meetings</div>
+                <div class="stat-value" id="totalMeetings">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total LTIs</div>
+                <div class="stat-value" id="totalLTIs">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">LTIs > 6 Months</div>
+                <div class="stat-value" id="oldLTIs">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Critical Risk</div>
+                <div class="stat-value" id="criticalLTIs">0</div>
+            </div>
+        </div>
+
+        <div id="dataPreview" class="data-preview" style="display: none;">
+            <h3>Data Preview:</h3>
+            <pre id="previewContent"></pre>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        function generateTestMeetings() {
+            const today = new Date();
+            const meetings = [];
+            
+            // Generate 5 meetings with various dates
+            for (let i = 0; i < 5; i++) {
+                const meetingDate = new Date(today);
+                meetingDate.setMonth(today.getMonth() - (i * 2)); // Every 2 months back
+                
+                const meeting = {
+                    id: `meeting-${Date.now()}-${i}`,
+                    date: meetingDate.toISOString().split('T')[0],
+                    attendees: [
+                        { id: `person-${i}-1`, name: `John Smith ${i+1}` },
+                        { id: `person-${i}-2`, name: `Jane Doe ${i+1}` },
+                        { id: `person-${i}-3`, name: `Bob Johnson ${i+1}` }
+                    ],
+                    isolations: generateTestIsolations(i),
+                    responses: generateTestResponses(i),
+                    actionItems: generateActionItems(i),
+                    criticalFindings: i > 2 ? [`Critical finding ${i}`] : [],
+                    relatedIsolationWarnings: i > 1 ? generateRelatedWarnings(i) : [],
+                    version: '3.0'
+                };
+                
+                meetings.push(meeting);
+            }
+            
+            return meetings;
+        }
+
+        function generateTestIsolations(meetingIndex) {
+            const isolations = [];
+            const riskLevels = ['Critical', 'High', 'Medium', 'Low'];
+            const systems = ['System A', 'System B', 'System C', 'System D'];
+            const today = new Date();
+            
+            // Generate 10-15 isolations per meeting
+            const numIsolations = 10 + Math.floor(Math.random() * 6);
+            
+            for (let i = 0; i < numIsolations; i++) {
+                // Create planned start dates ranging from recent to over 2 years old
+                const daysOld = Math.floor(Math.random() * 900); // Up to ~2.5 years
+                const plannedStartDate = new Date(today);
+                plannedStartDate.setDate(today.getDate() - daysOld);
+                
+                const isolation = {
+                    id: `CAHE-${1000 + meetingIndex * 100 + i}`,
+                    description: `Test isolation ${i+1} for meeting ${meetingIndex+1}`,
+                    'Isolation Description': `Detailed description of isolation ${i+1}`,
+                    'Equipment ID': `EQ-${1000 + i}`,
+                    'System': systems[Math.floor(Math.random() * systems.length)],
+                    'Risk Level': riskLevels[Math.floor(Math.random() * riskLevels.length)],
+                    'Planned Start Date': plannedStartDate.toISOString().split('T')[0],
+                    'Planned End Date': new Date(plannedStartDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    'MOC Required': daysOld > 180 ? 'Yes' : 'No',
+                    'MOC Status': daysOld > 180 ? (Math.random() > 0.5 ? 'In Progress' : 'Required') : 'N/A',
+                    'Equipment Issues': daysOld > 365 ? 'Disconnect Required' : 'None',
+                    'Action Required': daysOld > 180 ? 'Review Required' : 'Monitor'
+                };
+                
+                isolations.push(isolation);
+            }
+            
+            return isolations;
+        }
+
+        function generateTestResponses(meetingIndex) {
+            const responses = [];
+            const isolations = generateTestIsolations(meetingIndex);
+            
+            isolations.forEach((isolation, index) => {
+                const response = {
+                    isolationId: isolation.id,
+                    isolationDescription: isolation['Isolation Description'],
+                    equipmentId: isolation['Equipment ID'],
+                    system: isolation['System'],
+                    riskLevel: isolation['Risk Level'],
+                    plannedStartDate: isolation['Planned Start Date'],
+                    plannedEndDate: isolation['Planned End Date'],
+                    
+                    // Risk Assessment
+                    riskAssessmentComplete: 'Yes',
+                    riskLevel: isolation['Risk Level'],
+                    riskMitigation: `Mitigation measures for ${isolation.id}`,
+                    
+                    // MOC Status
+                    mocRequired: isolation['MOC Required'],
+                    mocNumber: isolation['MOC Required'] === 'Yes' ? `MOC-${1000 + index}` : '',
+                    mocStatus: isolation['MOC Status'],
+                    
+                    // Parts & Materials
+                    partsRequired: Math.random() > 0.7 ? 'Yes' : 'No',
+                    partsOrdered: Math.random() > 0.5 ? 'Yes' : 'No',
+                    expectedArrival: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    
+                    // Equipment Status
+                    equipmentDisconnected: isolation['Equipment Issues'] !== 'None' ? 'Required' : 'No',
+                    equipmentRemoved: 'No',
+                    
+                    // Support Requirements
+                    vendorSupportRequired: Math.random() > 0.8 ? 'Yes' : 'No',
+                    vendorName: Math.random() > 0.8 ? 'Vendor Corp' : '',
+                    specialistRequired: Math.random() > 0.9 ? 'Yes' : 'No',
+                    
+                    // Timeline
+                    plannedResolutionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    actualResolutionDate: '',
+                    delayReason: '',
+                    
+                    // Action Items
+                    immediateActions: `Review and update ${isolation.id}`,
+                    longTermActions: `Plan permanent resolution for ${isolation.id}`,
+                    actionOwner: `Owner ${index + 1}`,
+                    
+                    // WMS Manual Compliance
+                    corrosionRisk: Math.random() > 0.7 ? 'Yes' : 'No',
+                    deadLegs: Math.random() > 0.8 ? 'Yes' : 'No',
+                    temporaryClamps: Math.random() > 0.6 ? 'Yes' : 'No',
+                    vibrationIssues: Math.random() > 0.9 ? 'Yes' : 'No',
+                    
+                    // Additional Fields
+                    comments: `Test comments for ${isolation.id}`,
+                    lastReviewDate: new Date().toISOString().split('T')[0],
+                    nextReviewDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                };
+                
+                responses.push(response);
+            });
+            
+            return responses;
+        }
+
+        function generateActionItems(meetingIndex) {
+            const actionItems = [];
+            const priorities = ['High', 'Medium', 'Low'];
+            
+            for (let i = 0; i < 5; i++) {
+                actionItems.push({
+                    id: `action-${meetingIndex}-${i}`,
+                    description: `Action item ${i+1} for meeting ${meetingIndex+1}`,
+                    owner: `Owner ${i+1}`,
+                    dueDate: new Date(Date.now() + (i + 1) * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    priority: priorities[Math.floor(Math.random() * priorities.length)],
+                    status: 'Open'
+                });
+            }
+            
+            return actionItems;
+        }
+
+        function generateRelatedWarnings(meetingIndex) {
+            return [
+                {
+                    currentIsolation: `CAHE-${1000 + meetingIndex * 100}`,
+                    relatedIsolations: [`CAHE-${1001 + meetingIndex * 100}`, `CAHE-${1002 + meetingIndex * 100}`],
+                    warningType: 'Adjacent Equipment',
+                    riskLevel: 'High'
+                }
+            ];
+        }
+
+        function loadComprehensiveTestData() {
+            try {
+                const meetings = generateTestMeetings();
+                localStorage.setItem('savedMeetings', JSON.stringify(meetings));
+                
+                // Also save to individual meeting keys for compatibility
+                meetings.forEach((meeting, index) => {
+                    localStorage.setItem(`meeting_${index}`, JSON.stringify(meeting));
+                });
+                
+                updateStatus(`✅ Successfully loaded ${meetings.length} test meetings with comprehensive data!`, 'success');
+                updateStats(meetings);
+                showDataPreview(meetings);
+            } catch (error) {
+                updateStatus(`❌ Error loading test data: ${error.message}`, 'error');
+            }
+        }
+
+        function loadAssetManagerTestData() {
+            try {
+                const meetings = generateTestMeetings();
+                
+                // Ensure we have plenty of old LTIs for Asset Manager testing
+                meetings.forEach(meeting => {
+                    // Make 60% of isolations over 6 months old
+                    meeting.isolations.forEach((isolation, index) => {
+                        if (index % 10 < 6) {
+                            const oldDate = new Date();
+                            oldDate.setMonth(oldDate.getMonth() - (7 + Math.floor(Math.random() * 18))); // 7-25 months old
+                            isolation['Planned Start Date'] = oldDate.toISOString().split('T')[0];
+                            isolation['MOC Required'] = 'Yes';
+                            isolation['MOC Status'] = ['Required', 'In Progress', 'Submitted'][Math.floor(Math.random() * 3)];
+                            
+                            if (index % 3 === 0) {
+                                isolation['Risk Level'] = 'Critical';
+                            }
+                            if (index % 4 === 0) {
+                                isolation['Equipment Issues'] = 'Disconnect Required';
+                            }
+                        }
+                    });
+                    
+                    // Update responses to match
+                    meeting.responses.forEach((response, index) => {
+                        if (index % 10 < 6) {
+                            const oldDate = new Date();
+                            oldDate.setMonth(oldDate.getMonth() - (7 + Math.floor(Math.random() * 18)));
+                            response.plannedStartDate = oldDate.toISOString().split('T')[0];
+                            response.mocRequired = 'Yes';
+                            response.mocStatus = ['Required', 'In Progress', 'Submitted'][Math.floor(Math.random() * 3)];
+                            
+                            if (index % 3 === 0) {
+                                response.riskLevel = 'Critical';
+                            }
+                            if (index % 4 === 0) {
+                                response.equipmentDisconnected = 'Required';
+                            }
+                        }
+                    });
+                });
+                
+                localStorage.setItem('savedMeetings', JSON.stringify(meetings));
+                
+                updateStatus(`✅ Successfully loaded Asset Manager test data with ${meetings.length} meetings optimized for 6-month reviews!`, 'success');
+                updateStats(meetings);
+                showDataPreview(meetings);
+            } catch (error) {
+                updateStatus(`❌ Error loading Asset Manager test data: ${error.message}`, 'error');
+            }
+        }
+
+        function viewCurrentData() {
+            try {
+                const data = localStorage.getItem('savedMeetings');
+                if (data) {
+                    const meetings = JSON.parse(data);
+                    updateStatus(`📊 Currently storing ${meetings.length} meetings in localStorage`, 'info');
+                    updateStats(meetings);
+                    showDataPreview(meetings);
+                } else {
+                    updateStatus('📭 No data currently stored in localStorage', 'info');
+                    document.getElementById('stats').style.display = 'none';
+                    document.getElementById('dataPreview').style.display = 'none';
+                }
+            } catch (error) {
+                updateStatus(`❌ Error reading data: ${error.message}`, 'error');
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ Are you sure you want to clear all test data? This cannot be undone.')) {
+                localStorage.clear();
+                updateStatus('🗑️ All data has been cleared from localStorage', 'success');
+                document.getElementById('stats').style.display = 'none';
+                document.getElementById('dataPreview').style.display = 'none';
+            }
+        }
+
+        function updateStats(meetings) {
+            let totalLTIs = 0;
+            let oldLTIs = 0;
+            let criticalLTIs = 0;
+            const today = new Date();
+            const sixMonthsAgo = new Date(today);
+            sixMonthsAgo.setMonth(today.getMonth() - 6);
+            
+            meetings.forEach(meeting => {
+                if (meeting.isolations) {
+                    totalLTIs += meeting.isolations.length;
+                    
+                    meeting.isolations.forEach(isolation => {
+                        const startDate = new Date(isolation['Planned Start Date']);
+                        if (startDate < sixMonthsAgo) {
+                            oldLTIs++;
+                        }
+                        if (isolation['Risk Level'] === 'Critical') {
+                            criticalLTIs++;
+                        }
+                    });
+                }
+            });
+            
+            document.getElementById('totalMeetings').textContent = meetings.length;
+            document.getElementById('totalLTIs').textContent = totalLTIs;
+            document.getElementById('oldLTIs').textContent = oldLTIs;
+            document.getElementById('criticalLTIs').textContent = criticalLTIs;
+            document.getElementById('stats').style.display = 'grid';
+        }
+
+        function showDataPreview(meetings) {
+            const preview = {
+                totalMeetings: meetings.length,
+                meetingSummary: meetings.map(m => ({
+                    date: m.date,
+                    attendees: m.attendees.length,
+                    isolations: m.isolations ? m.isolations.length : 0,
+                    actionItems: m.actionItems ? m.actionItems.length : 0
+                })),
+                sampleIsolation: meetings[0]?.isolations?.[0] || null,
+                sampleResponse: meetings[0]?.responses?.[0] || null
+            };
+            
+            document.getElementById('previewContent').textContent = JSON.stringify(preview, null, 2);
+            document.getElementById('dataPreview').style.display = 'block';
+        }
+
+        // Check current data on load
+        window.onload = function() {
+            const data = localStorage.getItem('savedMeetings');
+            if (data) {
+                try {
+                    const meetings = JSON.parse(data);
+                    updateStatus(`📊 Found ${meetings.length} existing meetings in localStorage`, 'info');
+                    updateStats(meetings);
+                } catch (error) {
+                    updateStatus('Ready to load test data', 'info');
+                }
+            } else {
+                updateStatus('No existing data found. Ready to load test data.', 'info');
+            }
+        };
+    </script>
+</body>
+</html>

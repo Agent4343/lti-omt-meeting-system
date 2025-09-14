@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Asset Manager Test Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        .success {
+            background: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #2196f3;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #ff9800;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #1976d2;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Asset Manager Test Data Loader</h1>
+        
+        <div class="info">
+            <strong>Purpose:</strong> This tool loads comprehensive test data for the Asset Manager Dashboard, including LTIs over 6 months old that require review.
+        </div>
+
+        <h2>Load Test Data Options:</h2>
+        
+        <button onclick="loadComprehensiveTestData()">
+            📊 Load Comprehensive Test Data (15 LTIs, Mixed Ages)
+        </button>
+        
+        <button onclick="loadSixMonthPlusData()">
+            ⏰ Load 6+ Month LTIs Only (8 LTIs)
+        </button>
+        
+        <button onclick="loadCriticalRiskData()">
+            🚨 Load Critical Risk LTIs (5 Critical, 3 High)
+        </button>
+        
+        <button onclick="loadMOCRequiredData()">
+            📋 Load MOC Required LTIs (10 LTIs)
+        </button>
+        
+        <button onclick="clearAllData()">
+            🗑️ Clear All Data
+        </button>
+
+        <div id="result"></div>
+        
+        <h2>Current Data Status:</h2>
+        <div id="currentStatus"></div>
+    </div>
+
+    <script>
+        // Helper function to generate dates
+        function getDateDaysAgo(days) {
+            const date = new Date();
+            date.setDate(date.getDate() - days);
+            return date.toISOString().split('T')[0];
+        }
+
+        // Load comprehensive test data
+        function loadComprehensiveTestData() {
+            const testMeeting = {
+                id: 'meeting_' + Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                attendees: [
+                    { name: 'John Smith - Asset Manager' },
+                    { name: 'Jane Doe - Operations Manager' },
+                    { name: 'Bob Wilson - Safety Engineer' },
+                    { name: 'Alice Brown - Process Engineer' }
+                ],
+                isolations: [
+                    // Over 2 years old - Critical
+                    {
+                        id: 'CAHE-001',
+                        description: 'Main reactor isolation - vessel repair',
+                        'Planned Start Date': getDateDaysAgo(850),
+                        plannedStartDate: getDateDaysAgo(850),
+                        Title: 'Reactor Vessel Isolation'
+                    },
+                    {
+                        id: 'CAHE-002',
+                        description: 'Heat exchanger bypass - tube leak',
+                        'Planned Start Date': getDateDaysAgo(750),
+                        plannedStartDate: getDateDaysAgo(750),
+                        Title: 'HX-101 Bypass'
+                    },
+                    // 1-2 years old - High Risk
+                    {
+                        id: 'CAHE-003',
+                        description: 'Compressor K-201 isolation',
+                        'Planned Start Date': getDateDaysAgo(450),
+                        plannedStartDate: getDateDaysAgo(450),
+                        Title: 'K-201 Isolation'
+                    },
+                    {
+                        id: 'CAHE-004',
+                        description: 'Storage tank T-301 isolation',
+                        'Planned Start Date': getDateDaysAgo(380),
+                        plannedStartDate: getDateDaysAgo(380),
+                        Title: 'T-301 Isolation'
+                    },
+                    // 6-12 months old - Medium Risk
+                    {
+                        id: 'CAHE-005',
+                        description: 'Pump P-401 suction isolation',
+                        'Planned Start Date': getDateDaysAgo(280),
+                        plannedStartDate: getDateDaysAgo(280),
+                        Title: 'P-401 Suction'
+                    },
+                    {
+                        id: 'CAHE-006',
+                        description: 'Control valve CV-501 bypass',
+                        'Planned Start Date': getDateDaysAgo(220),
+                        plannedStartDate: getDateDaysAgo(220),
+                        Title: 'CV-501 Bypass'
+                    },
+                    {
+                        id: 'CAHE-007',
+                        description: 'Filter F-601 isolation',
+                        'Planned Start Date': getDateDaysAgo(195),
+                        plannedStartDate: getDateDaysAgo(195),
+                        Title: 'F-601 Isolation'
+                    },
+                    // Just over 6 months
+                    {
+                        id: 'CAHE-008',
+                        description: 'Separator S-701 inlet isolation',
+                        'Planned Start Date': getDateDaysAgo(185),
+                        plannedStartDate: getDateDaysAgo(185),
+                        Title: 'S-701 Inlet'
+                    },
+                    // Under 6 months - Low Risk
+                    {
+                        id: 'CAHE-009',
+                        description: 'Sample point SP-801 isolation',
+                        'Planned Start Date': getDateDaysAgo(150),
+                        plannedStartDate: getDateDaysAgo(150),
+                        Title: 'SP-801'
+                    },
+                    {
+                        id: 'CAHE-010',
+                        description: 'Drain valve DV-901 isolation',
+                        'Planned Start Date': getDateDaysAgo(90),
+                        plannedStartDate: getDateDaysAgo(90),
+                        Title: 'DV-901'
+                    },
+                    // Recent isolations
+                    {
+                        id: 'CAHE-011',
+                        description: 'Instrument line isolation',
+                        'Planned Start Date': getDateDaysAgo(45),
+                        plannedStartDate: getDateDaysAgo(45),
+                        Title: 'IL-1001'
+                    },
+                    {
+                        id: 'CAHE-012',
+                        description: 'Vent valve VV-1101 isolation',
+                        'Planned Start Date': getDateDaysAgo(30),
+                        plannedStartDate: getDateDaysAgo(30),
+                        Title: 'VV-1101'
+                    },
+                    // Additional 6+ month isolations
+                    {
+                        id: 'CAHE-013',
+                        description: 'Cooling water return isolation',
+                        'Planned Start Date': getDateDaysAgo(365),
+                        plannedStartDate: getDateDaysAgo(365),
+                        Title: 'CW Return'
+                    },
+                    {
+                        id: 'CAHE-014',
+                        description: 'Steam header isolation',
+                        'Planned Start Date': getDateDaysAgo(290),
+                        plannedStartDate: getDateDaysAgo(290),
+                        Title: 'Steam Header'
+                    },
+                    {
+                        id: 'CAHE-015',
+                        description: 'Nitrogen purge line isolation',
+                        'Planned Start Date': getDateDaysAgo(210),
+                        plannedStartDate: getDateDaysAgo(210),
+                        Title: 'N2 Purge'
+                    }
+                ],
+                responses: {
+                    'CAHE-001': {
+                        riskLevel: 'Critical',
+                        businessImpact: 'High',
+                        mocRequired: 'Yes',
+                        mocNumber: 'MOC-2023-001',
+                        mocStatus: 'In Progress',
+                        partsRequired: 'Yes',
+                        partsExpectedDate: '2025-10-15',
+                        partsStatus: 'On Order',
+                        equipmentDisconnectionRequired: 'Yes',
+                        equipmentRemovalRequired: 'Yes',
+                        plannedResolutionDate: '2025-11-01',
+                        actionRequired: 'Urgent',
+                        actionItems: [
+                            { description: 'Expedite MOC approval', owner: 'John Smith' },
+                            { description: 'Schedule equipment removal', owner: 'Bob Wilson' }
+                        ],
+                        comments: 'Critical isolation requiring immediate attention',
+                        corrosionRisk: 'High',
+                        deadLegsRisk: 'High',
+                        automationLossRisk: 'Medium'
+                    },
+                    'CAHE-002': {
+                        riskLevel: 'Critical',
+                        businessImpact: 'High',
+                        mocRequired: 'Yes',
+                        mocNumber: 'MOC-2023-002',
+                        mocStatus: 'Submitted',
+                        partsRequired: 'Yes',
+                        partsExpectedDate: '2025-09-30',
+                        partsStatus: 'Ordered',
+                        equipmentDisconnectionRequired: 'Yes',
+                        equipmentRemovalRequired: 'No',
+                        plannedResolutionDate: '2025-10-15',
+                        actionRequired: 'Urgent',
+                        actionItems: [
+                            { description: 'Review MOC with management', owner: 'Jane Doe' }
+                        ],
+                        comments: 'Heat exchanger requires replacement',
+                        corrosionRisk: 'High',
+                        deadLegsRisk: 'Medium',
+                        automationLossRisk: 'Low'
+                    },
+                    'CAHE-003': {
+                        riskLevel: 'High',
+                        businessImpact: 'Medium',
+                        mocRequired: 'Yes',
+                        mocNumber: 'MOC-2024-003',
+                        mocStatus: 'Approved',
+                        partsRequired: 'No',
+                        partsStatus: 'Not Required',
+                        equipmentDisconnectionRequired: 'Yes',
+                        equipmentRemovalRequired: 'No',
+                        plannedResolutionDate: '2025-12-01',
+                        actionRequired: 'Yes',
+                        actionItems: [
+                            { description: 'Schedule maintenance window', owner: 'Bob Wilson' }
+                        ],
+                        comments: 'Compressor maintenance required',
+                        corrosionRisk: 'Medium',
+                        deadLegsRisk: 'Low',
+                        automationLossRisk: 'High'
+                    },
+                    'CAHE-004': {
+                        riskLevel: 'High',
+                        businessImpact: 'Medium',
+                        mocRequired: 'Yes',
+                        mocNumber: '',
+                        mocStatus: 'Required',
+                        partsRequired: 'Yes',
+                        partsExpectedDate: '',
+                        partsStatus: 'Not Ordered',
+                        equipmentDisconnectionRequired: 'No',
+                        equipmentRemovalRequired: 'Yes',
+                        plannedResolutionDate: '',
+                        actionRequired: 'Yes',
+                        actionItems: [
+                            { description: 'Initiate MOC process', owner: 'Alice Brown' }
+                        ],
+                        comments: 'Tank inspection required',
+                        corrosionRisk: 'High',
+                        deadLegsRisk: 'High',
+                        automationLossRisk: 'Low'
+                    },
+                    'CAHE-005': {
+                        riskLevel: 'Medium',
+                        businessImpact: 'Low',
+                        mocRequired: 'No',
+                        mocNumber: '',
+                        mocStatus: 'N/A',
+                        partsRequired: 'Yes',
+                        partsExpectedDate: '2025-10-01',
+                        partsStatus: 'On Order',
+                        equipmentDisconnectionRequired: 'Yes',
+                        equipmentRemovalRequired: 'No',
+                        plannedResolutionDate: '2025-10-15',
+                        actionRequired: 'No',
+                        actionItems: [],
+                        comments: 'Routine pump maintenance',
+                        corrosionRisk: 'Low',
+                        deadLegsRisk: 'Medium',
+                        automationLossRisk: 'Low'
+                    },
+                    'CAHE-006': {
+                        riskLevel: 'Medium',
+                        businessImpact: 'Low',
+                        mocRequired: 'No',
+                        mocNumber: '',
+                        mocStatus: 'N/A',
+                        partsRequired: 'No',
+                        partsStatus: 'Not Required',
+                        equipmentDisconnectionRequired: 'No',
+                        equipmentRemovalRequired: 'No',
+                        plannedResolutionDate: '2025-11-15',
+                        actionRequired: 'No',
+                        actionItems: [],
+                        comments: 'Control valve calibration needed',
+                        corrosionRisk: 'Low',
+                        deadLegsRisk: 'Low',
+                        automationLossRisk: 'Medium'
+                    },
+                    'CAHE-007': {
+                        riskLevel: 'Low',
+                        businessImpact: 'Low',
+                        mocRequired: 'No',
+                        mocNumber: '',
+                        mocStatus: 'N/A',
+                        partsRequired: 'Yes',
+                        partsExpectedDate: '2025-09-20',
+                        partsStatus: 'Received',
+                        equipmentDisconnectionRequired: 'Yes',
+                        equipmentRemovalRequired: 'No',
+                        plannedResolutionDate: '2025-09-25',
+                        actionRequired: 'No',
+                        actionItems: [],
+                        comments: 'Filter replacement scheduled',
+                        corrosionRisk: 'Low',
+                        deadLegsRisk: 'Low',
+                        automationLossRisk: 'Low'
+                    },
+                    'CAHE-008': {
+                        riskLevel: 'Medium',
+                        businessImpact: 'Medium',
+                        mocRequired: 'Yes',
+                        mocNumber: 'MOC-2024-008',
+                        mocStatus: 'In Progress',
+                        partsRequired: 'No',
+                        partsStatus: 'Not Required',
+                        equipmentDisconnectionRequired: 'Yes',
+                        equipmentRemovalRequired: 'No',
+                        plannedResolutionDate: '2025-10-30',
+                        actionRequired: 'Yes',
+                        actionItems: [
+                            { description: 'Complete MOC review', owner: 'John Smith' }
+                        ],
+                        comments: 'Separator maintenance required',
+                        corrosionRisk: 'Medium',
+                        deadLegsRisk: 'Medium',
+                        automationLossRisk: 'Low'
+                    }
+                }
+            };
+
+            // Save to localStorage
+            localStorage.setItem('savedMeetings', JSON.stringify([testMeeting]));
+            
+            // Also save to meetings key for compatibility
+            localStorage.setItem('meetings', JSON.stringify([testMeeting]));
+            
+            // Display success message
+            displayResult('success', `
+                <h3>✅ Comprehensive Test Data Loaded Successfully!</h3>
+                <p>Loaded 1 meeting with 15 isolations:</p>
+                <ul>
+                    <li>8 LTIs over 6 months old (requiring Asset Manager review)</li>
+                    <li>2 Critical Risk LTIs</li>
+                    <li>2 High Risk LTIs</li>
+                    <li>4 Medium Risk LTIs</li>
+                    <li>3 Low Risk LTIs</li>
+                    <li>4 LTIs requiring MOCs</li>
+                    <li>6 LTIs requiring equipment work</li>
+                </ul>
+                <p><strong>Navigate to the Asset Manager Dashboard to see the data!</strong></p>
+            `);
+            
+            updateCurrentStatus();
+        }
+
+        // Load only 6+ month old LTIs
+        function loadSixMonthPlusData() {
+            const testMeeting = {
+                id: 'meeting_6plus_' + Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                attendees: [
+                    { name: 'Asset Manager Team' }
+                ],
+                isolations: [
+                    {
+                        id: 'LTI-6M-001',
+                        description: 'Unit 1 - Main vessel isolation (2+ years)',
+                        'Planned Start Date': getDateDaysAgo(900),
+                        plannedStartDate: getDateDaysAgo(900),
+                        Title: 'Unit 1 Main Vessel'
+                    },
+                    {
+                        id: 'LTI-6M-002',
+                        description: 'Unit 2 - Reactor bypass (18 months)',
+                        'Planned Start Date': getDateDaysAgo(550),
+                        plannedStartDate: getDateDaysAgo(550),
+                        Title: 'Unit 2 Reactor'
+                    },
+                    {
+                        id: 'LTI-6M-003',
+                        description: 'Unit 3 - Compressor isolation (14 months)',
+                        'Planned Start Date': getDateDaysAgo(420),
+                        plannedStartDate: getDateDaysAgo(420),
+                        Title: 'Unit 3 Compressor'
+                    },
+                    {
+                        id: 'LTI-6M-004',
+                        description: 'Unit 4 - Heat exchanger (12 months)',
+                        'Planned Start Date': getDateDaysAgo(365),
+                        plannedStartDate: getDateDaysAgo(365),
+                        Title: 'Unit 4 HX'
+                    },
+                    {
+                        id: 'LTI-6M-005',
+                        description: 'Unit 5 - Storage tank (10 months)',
+                        'Planned Start Date': getDateDaysAgo(300),
+                        plannedStartDate: getDateDaysAgo(300),
+                        Title: 'Unit 5 Tank'
+                    },
+                    {
+                        id: 'LTI-6M-006',
+                        description: 'Unit 6 - Pump isolation (8 months)',
+                        'Planned Start Date': getDateDaysAgo(240),
+                        plannedStartDate: getDateDaysAgo(240),
+                        Title: 'Unit 6 Pump'
+                    },
+                    {
+                        id: 'LTI-6M-007',
+                        description: 'Unit 7 - Valve bypass (7 months)',
+                        'Planned Start Date': getDateDaysAgo(210),
+                        plannedStartDate: getDateDaysAgo(210),
+                        Title: 'Unit 7 Valve'
+                    },
+                    {
+                        id: 'LTI-6M-008',
+                        description: 'Unit 8 - Filter isolation (6.5 months)',
+                        'Planned Start Date': getDateDaysAgo(195),
+                        plannedStartDate: getDateDaysAgo(195),
+                        Title: 'Unit 8 Filter'
+                    }
+                ],
+                responses: {}
+            };
+
+            // Add responses for all isolations
+            testMeeting.isolations.forEach((isolation, index) => {
+                const riskLevels = ['Critical', 'High', 'Medium', 'Low'];
+                const mocStatuses = ['Required', 'Submitted', 'Approved', 'In Progress', 'Completed'];
+                
+                testMeeting.responses[isolation.id] = {
+                    riskLevel: index < 2 ? 'Critical' : index < 4 ? 'High' : 'Medium',
+                    businessImpact: index < 4 ? 'High' : 'Medium',
+                    mocRequired: index < 5 ? 'Yes' : 'No',
+                    mocNumber: index < 3 ? `MOC-2024-${String(index + 1).padStart(3, '0')}` : '',
+                    mocStatus: index < 5 ? mocStatuses[index] : 'N/A',
+                    partsRequired: index % 2 === 0 ? 'Yes' : 'No',
+                    partsStatus: index % 2 === 0 ? 'On Order' : 'Not Required',
+                    equipmentDisconnectionRequired: index < 4 ? 'Yes' : 'No',
+                    equipmentRemovalRequired: index < 2 ? 'Yes' : 'No',
+                    actionRequired: index < 3 ? 'Urgent' : 'Yes',
+                    comments: `LTI over 6 months - requires Asset Manager review`,
+                    corrosionRisk: index < 3 ? 'High' : 'Medium',
+                    deadLegsRisk: 'Medium',
+                    automationLossRisk: 'Low'
+                };
+            });
+
+            localStorage.setItem('savedMeetings', JSON.stringify([testMeeting]));
+            localStorage.setItem('meetings', JSON.stringify([testMeeting]));
+            
+            displayResult('success', `
+                <h3>✅ 6+ Month LTIs Loaded Successfully!</h3>
+                <p>Loaded 8 LTIs all over 6 months old:</p>
+                <ul>
+                    <li>1 LTI over 2 years old</li>
+                    <li>3 LTIs between 1-2 years old</li>
+                    <li>4 LTIs between 6-12 months old</li>
+                </ul>
+                <p><strong>All require Asset Manager review!</strong></p>
+            `);
+            
+            updateCurrentStatus();
+        }
+
+        // Load critical risk data
+        function loadCriticalRiskData() {
+            const testMeeting = {
+                id: 'meeting_critical_' + Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                attendees: [
+                    { name: 'Emergency Response Team' }
+                ],
+                isolations: [],
+                responses: {}
+            };
+
+            // Add 5 critical and 3 high risk LTIs
+            for (let i = 1; i <= 8; i++) {
+                const isCritical = i <= 5;
+                const daysOld = 200 + (i * 50); // All over 6 months
+                
+                const isolation = {
+                    id: `CRIT-${String(i).padStart(3, '0')}`,
+                    description: `${isCritical ? 'CRITICAL' : 'HIGH'} - ${isCritical ? 'Major equipment failure' : 'Equipment degradation'} Unit ${i}`,
+                    'Planned Start Date': getDateDaysAgo(daysOld),
+                    plannedStartDate: getDateDaysAgo(daysOld),
+                    Title: `${isCritical ? 'Critical' : 'High'} Risk Unit ${i}`
+                };
+                
+                testMeeting.isolations.push(isolation);
+                
+                testMeeting.responses[isolation.id] = {
+                    riskLevel: isCritical ? 'Critical' : 'High',
+                    businessImpact: 'High',
+                    mocRequired: 'Yes',
+                    mocNumber: `MOC-URGENT-${String(i).padStart(3, '0')}`,
+                    mocStatus: isCritical ? 'In Progress' : 'Submitted',
+                    partsRequired: 'Yes',
+                    partsExpectedDate: '2025-10-01',
+                    partsStatus: isCritical ? 'Expedited' : 'On Order',
+                    equipmentDisconnectionRequired: 'Yes',
+                    equipmentRemovalRequired: isCritical ? 'Yes' : 'No',
+                    plannedResolutionDate: '2025-10-15',
+                    actionRequired: 'Urgent',
+                    actionItems: [
+                        { description: 'Immediate management review required', owner: 'Asset Manager' },
+                        { description: 'Expedite all approvals', owner: 'Operations Manager' }
+                    ],
+                    comments: `${isCritical ? 'CRITICAL SAFETY ISSUE' : 'HIGH PRIORITY'} - Immediate attention required`,
+                    corrosionRisk: 'High',
+                    deadLegsRisk: isCritical ? 'High' : 'Medium',
+                    automationLossRisk: 'High'
+                };
+            }
+
+            localStorage.setItem('savedMeetings', JSON.stringify([testMeeting]));
+            localStorage.setItem('meetings', JSON.stringify([testMeeting]));
+            
+            displayResult('warning', `
+                <h3>🚨 Critical Risk Data Loaded!</h3>
+                <p>Loaded 8 high-priority LTIs:</p>
+                <ul>
+                    <li>5 CRITICAL Risk LTIs</li>
+                    <li>3 HIGH Risk LTIs</li>
+                    <li>All over 6 months old</li>
+                    <li>All require urgent action</li>
+                    <li>All MOCs in progress</li>
+                </ul>
+                <p><strong>⚠️ Immediate Asset Manager attention required!</strong></p>
+            `);
+            
+            updateCurrentStatus();
+        }
+
+        // Load MOC required data
+        function loadMOCRequiredData() {
+            const testMeeting = {
+                id: 'meeting_moc_' + Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                attendees: [
+                    { name: 'MOC Review Committee' }
+                ],
+                isolations: [],
+                responses: {}
+            };
+
+            const mocStatuses = ['Required', 'Submitted', 'Approved', 'In Progress', 'Completed'];
+            
+            for (let i = 1; i <= 10; i++) {
+                const daysOld = 190 + (i * 20); // All over 6 months
+                const statusIndex = (i - 1) % mocStatuses.length;
+                
+                const isolation = {
+                    id: `MOC-LTI-${String(i).padStart(3, '0')}`,
+                    description: `Equipment requiring MOC - Status: ${mocStatuses[statusIndex]}`,
+                    'Planned Start Date': getDateDaysAgo(daysOld),
+                    plannedStartDate: getDateDaysAgo(daysOld),
+                    Title: `MOC Required Unit ${i}`
+                };
+                
+                testMeeting.isolations.push(isolation);
+                
+                testMeeting.responses[isolation.id] = {
+                    riskLevel: i <= 3 ? 'High' : 'Medium',
+                    businessImpact: 'Medium',
+                    mocRequired: 'Yes',
+                    mocNumber: statusIndex > 0 ? `MOC-2024-${String(100 + i).padStart(3, '0')}` : '',
+                    mocStatus: mocStatuses[statusIndex],
+                    partsRequired: i % 3 === 0 ? 'Yes' : 'No',
+                    partsStatus: i % 3 === 0 ? 'On Order' : 'Not Required',
+                    equipmentDisconnectionRequired: i <= 5 ? 'Yes' : 'No',
+                    equipmentRemovalRequired: i <= 2 ? 'Yes' : 'No',
+                    plannedResolutionDate: '2025-12-31',
+                    actionRequired: statusIndex === 0 ? 'Urgent' : 'Yes',
+                    actionItems: statusIndex === 0 ? [
+                        { description: 'Initiate MOC process immediately', owner: 'Process Engineer' }
+                    ] : [],
+                    comments: `MOC Status: ${mocStatuses[statusIndex]} - ${statusIndex === 0 ? 'NEEDS IMMEDIATE INITIATION' : 'In progress'}`,
+                    corrosionRisk: 'Medium',
+                    deadLegsRisk: 'Low',
+                    automationLossRisk: 'Medium'
+                };
+            }
+
+            localStorage.setItem('savedMeetings', JSON.stringify([testMeeting]));
+            localStorage.setItem('meetings', JSON.stringify([testMeeting]));
+            
+            displayResult('info', `
+                <h3>📋 MOC Required Data Loaded!</h3>
+                <p>Loaded 10 LTIs requiring MOCs with various statuses:</p>
+                <ul>
+                    <li>2 MOCs Required (not started)</li>
+                    <li>2 MOCs Submitted</li>
+                    <li>2 MOCs Approved</li>
+                    <li>2 MOCs In Progress</li>
+                    <li>2 MOCs Completed</li>
+                </ul>
+                <p><strong>Review MOC progress in Asset Manager Dashboard!</strong></p>
+            `);
+            
+            updateCurrentStatus();
+        }
+
+        // Clear all data
+        function clearAllData() {
+            localStorage.removeItem('savedMeetings');
+            localStorage.removeItem('meetings');
+            
+            displayResult('warning', `
+                <h3>🗑️ All Data Cleared!</h3>
+                <p>All meeting and isolation data has been removed from localStorage.</p>
+            `);
+            
+            updateCurrentStatus();
+        }
+
+        // Display result message
+        function displayResult(type, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = type;
+            resultDiv.innerHTML = message;
+        }
+
+        // Update current status
+        function updateCurrentStatus() {
+            const statusDiv = document.getElementById('currentStatus');
+            const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
+            
+            let totalIsolations = 0;
+            let sixMonthsPlus = 0;
+            let criticalCount = 0;
+            let mocRequired = 0;
+            
+            savedMeetings.forEach(meeting => {
+                if (meeting.isolations) {
+                    totalIsolations += meeting.isolations.length;
+                    
+                    meeting.isolations.forEach(isolation => {
+                        const plannedDate = isolation['Planned Start Date'] || isolation.plannedStartDate;
+                        if (plannedDate) {
+                            const startDate = new Date(plannedDate);
+                            const currentDate = new Date();
+                            const diffDays = Math.ceil((currentDate - startDate) / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays >= 183) {
+                                sixMonthsPlus++;
+                            }
+                        }
+                        
+                        const response = meeting.responses?.[isolation.id];
+                        if (response) {
+                            if (response.riskLevel === 'Critical') criticalCount++;
+                            if (response.mocRequired === 'Yes') mocRequired++;
+                        }
+                    });
+                }
+            });
+            
+            statusDiv.innerHTML = `
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value">${savedMeetings.length}</div>
+                        <div class="stat-label">Total Meetings</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalIsolations}</div>
+                        <div class="stat-label">Total Isolations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${sixMonthsPlus}</div>
+                        <div class="stat-label">6+ Months Old</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${criticalCount}</div>
+                        <div class="stat-label">Critical Risk</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${mocRequired}</div>
+                        <div class="stat-label">MOCs Required</div>
+                    </div>
+                </div>
+                
+                <h3>Data Details:</h3>
+                <pre>${JSON.stringify(savedMeetings, null, 2).substring(0, 1000)}...</pre>
+            `;
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            updateCurrentStatus();
+        };
+    </script>
+</body>
+</html>

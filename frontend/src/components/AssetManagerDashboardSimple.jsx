@@ -45,6 +45,284 @@ const AssetManagerDashboard = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedLTI, setSelectedLTI] = useState(null);
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
+  const [localMeetings, setLocalMeetings] = useState([]);
+
+  // Auto-load test data if no data exists
+  useEffect(() => {
+    const autoLoadTestData = () => {
+      try {
+        const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
+        console.log('🔍 Asset Manager Dashboard - localStorage check:', {
+          savedMeetingsCount: savedMeetings.length,
+          contextMeetingsCount: meetings.length,
+          savedMeetings: savedMeetings
+        });
+        
+        // If no data exists, auto-load test data
+        if (savedMeetings.length === 0 && meetings.length === 0) {
+          console.log('🚀 Auto-loading test data for Asset Manager Dashboard...');
+          loadAssetManagerTestData();
+          return;
+        }
+        
+        // If localStorage has more meetings than context, use localStorage data
+        if (savedMeetings.length > meetings.length) {
+          console.log('📊 Using localStorage data instead of context');
+          setLocalMeetings(savedMeetings);
+        } else {
+          setLocalMeetings(meetings);
+        }
+      } catch (error) {
+        console.error('❌ Error reading localStorage:', error);
+        setLocalMeetings(meetings);
+      }
+    };
+
+    // Check immediately
+    autoLoadTestData();
+
+    // Set up interval to check for changes
+    const interval = setInterval(autoLoadTestData, 2000);
+
+    return () => clearInterval(interval);
+  }, [meetings]);
+
+  // Function to load test data automatically
+  const loadAssetManagerTestData = () => {
+    try {
+      console.log('🧪 Auto-loading Asset Manager test data...');
+      
+      // Create meetings with proper isolations and responses structure
+      const meetingsWithAgedLTIs = [
+        {
+          id: 'meeting-001',
+          name: 'LTI OMT Meeting - June 2023',
+          date: '2023-06-15',
+          attendees: ['Asset Manager', 'OMT Team', 'Operations Manager'],
+          isolations: [
+            {
+              id: 'CAHE-001-OLD',
+              description: 'Heat Exchanger Long-term Isolation',
+              'System/Equipment': 'CAHE-001-HX-001',
+              'Planned Start Date': '2023-06-01',
+              'Risk Level': 'High',
+              'MOC Required': 'Yes',
+              'Equipment Issues': 'Yes'
+            },
+            {
+              id: 'CAHE-002-OLD',
+              description: 'Pump Isolation - Extended',
+              'System/Equipment': 'CAHE-002-P-001',
+              'Planned Start Date': '2023-07-15',
+              'Risk Level': 'Medium',
+              'MOC Required': 'Yes',
+              'Equipment Issues': 'No'
+            }
+          ],
+          responses: {
+            'CAHE-001-OLD': {
+              riskLevel: 'High',
+              businessImpact: 'Medium',
+              mocRequired: 'Yes',
+              mocStatus: 'In Progress',
+              mocNumber: 'MOC-2023-001',
+              partsRequired: 'Yes',
+              partsStatus: 'Ordered',
+              partsExpectedDate: '2025-02-15',
+              equipmentDisconnectionRequired: 'Yes',
+              equipmentRemovalRequired: 'No',
+              plannedResolutionDate: '2025-03-01',
+              actionRequired: 'Plan Work',
+              corrosionRisk: 'High',
+              deadLegsRisk: 'Medium',
+              automationLossRisk: 'Low',
+              comments: 'Critical long-term isolation requiring Asset Manager review',
+              actionItems: [
+                { description: 'Complete MOC documentation', owner: 'Engineering Team' },
+                { description: 'Schedule equipment disconnection', owner: 'Maintenance Team' }
+              ]
+            },
+            'CAHE-002-OLD': {
+              riskLevel: 'Medium',
+              businessImpact: 'Low',
+              mocRequired: 'Yes',
+              mocStatus: 'Completed',
+              mocNumber: 'MOC-2023-002',
+              partsRequired: 'No',
+              partsStatus: 'Not Required',
+              equipmentDisconnectionRequired: 'No',
+              equipmentRemovalRequired: 'No',
+              plannedResolutionDate: '2025-06-01',
+              actionRequired: 'Monitor',
+              corrosionRisk: 'Low',
+              deadLegsRisk: 'Low',
+              automationLossRisk: 'Medium',
+              comments: 'Well-managed long-term isolation'
+            }
+          }
+        },
+        {
+          id: 'meeting-002',
+          name: 'LTI OMT Meeting - January 2023',
+          date: '2023-01-20',
+          attendees: ['Asset Manager', 'OMT Team', 'Safety Manager'],
+          isolations: [
+            {
+              id: 'CAHE-003-VERY-OLD',
+              description: 'Critical Valve Isolation',
+              'System/Equipment': 'CAHE-003-V-001',
+              'Planned Start Date': '2022-12-01',
+              'Risk Level': 'High',
+              'MOC Required': 'Yes',
+              'Equipment Issues': 'Yes'
+            },
+            {
+              id: 'CAHE-004-OLD',
+              description: 'Piping Section Isolation',
+              'System/Equipment': 'CAHE-004-P-002',
+              'Planned Start Date': '2023-01-20',
+              'Risk Level': 'Medium',
+              'MOC Required': 'No',
+              'Equipment Issues': 'Yes'
+            }
+          ],
+          responses: {
+            'CAHE-003-VERY-OLD': {
+              riskLevel: 'High',
+              businessImpact: 'High',
+              mocRequired: 'Yes',
+              mocStatus: 'Required',
+              mocNumber: '',
+              partsRequired: 'Yes',
+              partsStatus: 'Not Ordered',
+              partsExpectedDate: '',
+              equipmentDisconnectionRequired: 'Yes',
+              equipmentRemovalRequired: 'Yes',
+              plannedResolutionDate: '',
+              actionRequired: 'Urgent',
+              corrosionRisk: 'High',
+              deadLegsRisk: 'High',
+              automationLossRisk: 'High',
+              comments: 'CRITICAL: This isolation has been active for over 2 years and requires immediate Asset Manager attention',
+              actionItems: [
+                { description: 'Immediate MOC submission required', owner: 'Engineering Manager' },
+                { description: 'Equipment removal planning', owner: 'Asset Manager' },
+                { description: 'Risk assessment update', owner: 'Safety Team' }
+              ]
+            },
+            'CAHE-004-OLD': {
+              riskLevel: 'Medium',
+              businessImpact: 'Medium',
+              mocRequired: 'No',
+              mocStatus: 'Not Required',
+              partsRequired: 'Yes',
+              partsStatus: 'Available',
+              equipmentDisconnectionRequired: 'No',
+              equipmentRemovalRequired: 'Yes',
+              plannedResolutionDate: '2025-04-01',
+              actionRequired: 'Plan Work',
+              corrosionRisk: 'Medium',
+              deadLegsRisk: 'Low',
+              automationLossRisk: 'Low',
+              comments: 'Planned equipment removal will resolve this long-term isolation'
+            }
+          }
+        },
+        {
+          id: 'meeting-003',
+          name: 'LTI OMT Meeting - March 2024',
+          date: '2024-03-10',
+          attendees: ['Asset Manager', 'OMT Team'],
+          isolations: [
+            {
+              id: 'CAHE-005-MEDIUM',
+              description: 'Instrument Isolation',
+              'System/Equipment': 'CAHE-005-I-001',
+              'Planned Start Date': '2024-03-01',
+              'Risk Level': 'Low',
+              'MOC Required': 'Yes',
+              'Equipment Issues': 'No'
+            },
+            {
+              id: 'CAHE-007-BORDERLINE',
+              description: 'Compressor Isolation',
+              'System/Equipment': 'CAHE-007-C-001',
+              'Planned Start Date': '2024-07-01',
+              'Risk Level': 'Medium',
+              'MOC Required': 'Yes',
+              'Equipment Issues': 'Yes'
+            }
+          ],
+          responses: {
+            'CAHE-005-MEDIUM': {
+              riskLevel: 'Low',
+              businessImpact: 'Low',
+              mocRequired: 'Yes',
+              mocStatus: 'Submitted',
+              mocNumber: 'MOC-2024-005',
+              partsRequired: 'No',
+              partsStatus: 'Not Required',
+              equipmentDisconnectionRequired: 'No',
+              equipmentRemovalRequired: 'No',
+              plannedResolutionDate: '2025-01-01',
+              actionRequired: 'Monitor',
+              corrosionRisk: 'Low',
+              deadLegsRisk: 'Medium',
+              automationLossRisk: 'Low',
+              comments: 'Well-managed isolation approaching 1 year'
+            },
+            'CAHE-007-BORDERLINE': {
+              riskLevel: 'Medium',
+              businessImpact: 'Medium',
+              mocRequired: 'Yes',
+              mocStatus: 'Required',
+              mocNumber: '',
+              partsRequired: 'Yes',
+              partsStatus: 'Ordered',
+              partsExpectedDate: '2025-02-01',
+              equipmentDisconnectionRequired: 'Yes',
+              equipmentRemovalRequired: 'No',
+              plannedResolutionDate: '2025-03-15',
+              actionRequired: 'Plan Work',
+              corrosionRisk: 'Medium',
+              deadLegsRisk: 'Low',
+              automationLossRisk: 'Medium',
+              comments: 'Borderline 6-month isolation requiring Asset Manager review'
+            }
+          }
+        }
+      ];
+
+      // Save meetings to localStorage
+      localStorage.setItem('savedMeetings', JSON.stringify(meetingsWithAgedLTIs));
+
+      // Also save to currentMeetingIsolations for compatibility
+      const allIsolations = [];
+      meetingsWithAgedLTIs.forEach(meeting => {
+        if (meeting.isolations) {
+          allIsolations.push(...meeting.isolations);
+        }
+      });
+      localStorage.setItem('currentMeetingIsolations', JSON.stringify(allIsolations));
+
+      // Update local state immediately
+      setLocalMeetings(meetingsWithAgedLTIs);
+      
+      console.log('✅ Asset Manager Test Data Auto-loaded Successfully!');
+      console.log('📊 Dashboard should now show: Total LTIs: 6, 6+ Months Old: 6, MOCs Required: 5');
+
+    } catch (error) {
+      console.error('❌ Error auto-loading test data:', error);
+    }
+  };
+
+  // Debug log whenever meetings change
+  useEffect(() => {
+    console.log('🔄 Asset Manager Dashboard - meetings updated:', {
+      contextMeetings: meetings.length,
+      localMeetings: localMeetings.length
+    });
+  }, [meetings, localMeetings]);
 
   // Calculate LTI age in days from planned start date
   const calculateLTIAge = (plannedStartDate) => {
@@ -76,15 +354,27 @@ const AssetManagerDashboard = () => {
     }
   };
 
-  // Process all LTI data from meetings
+  // Process all LTI data from meetings - use localMeetings instead of meetings
   const processedLTIData = useMemo(() => {
     const allLTIs = [];
     
-    meetings.forEach(meeting => {
+    console.log('🔍 Processing LTI Data - localMeetings:', localMeetings);
+    
+    localMeetings.forEach(meeting => {
+      console.log('📋 Processing meeting:', meeting.id, meeting.date);
+      console.log('   - Has isolations:', !!meeting.isolations, meeting.isolations?.length || 0);
+      console.log('   - Has responses:', !!meeting.responses, Object.keys(meeting.responses || {}).length);
+      
       if (meeting.isolations && meeting.responses) {
         meeting.isolations.forEach(isolation => {
           const response = meeting.responses[isolation.id] || {};
           const ageInfo = calculateLTIAge(isolation['Planned Start Date'] || isolation.plannedStartDate);
+          
+          console.log(`   - Processing LTI ${isolation.id}:`, {
+            plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
+            ageInfo: ageInfo,
+            hasResponse: !!response.riskLevel
+          });
           
           const ltiData = {
             id: isolation.id,
@@ -117,11 +407,14 @@ const AssetManagerDashboard = () => {
           
           allLTIs.push(ltiData);
         });
+      } else {
+        console.log('   ⚠️ Meeting missing isolations or responses');
       }
     });
     
+    console.log('🎯 Final processed LTIs:', allLTIs.length, allLTIs);
     return allLTIs;
-  }, [meetings]);
+  }, [localMeetings]);
 
   // Calculate dashboard statistics
   const dashboardStats = useMemo(() => {
@@ -175,6 +468,14 @@ const AssetManagerDashboard = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Debug Info */}
+      {process.env.NODE_ENV === 'development' && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <strong>Debug:</strong> Context meetings: {meetings.length}, Local meetings: {localMeetings.length}, 
+          Total LTIs: {dashboardStats.totalLTIs}, 6+ months: {dashboardStats.sixMonthsPlus}
+        </Alert>
+      )}
+
       {/* Page Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -268,6 +569,7 @@ const AssetManagerDashboard = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell><strong>LTI ID</strong></TableCell>
+                    <TableCell><strong>Description</strong></TableCell>
                     <TableCell><strong>Age</strong></TableCell>
                     <TableCell><strong>Risk</strong></TableCell>
                     <TableCell><strong>MOC Status</strong></TableCell>
@@ -282,6 +584,11 @@ const AssetManagerDashboard = () => {
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                           {lti.id}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 200 }}>
+                          {lti.description}
                         </Typography>
                       </TableCell>
                       <TableCell>

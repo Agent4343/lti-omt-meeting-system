@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Corrected Asset Manager Test Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .info {
+            color: #2196f3;
+            margin: 10px 0;
+        }
+        .redirect {
+            background: #2196f3;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .redirect:hover {
+            background: #1976d2;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Corrected Asset Manager Test Data Loader</h1>
+        <p>This page will load properly structured test data for the Asset Manager Dashboard.</p>
+        
+        <div id="status">Loading corrected test data...</div>
+        <div id="log" class="log"></div>
+        
+        <button id="redirectBtn" class="redirect" style="display: none;" onclick="redirectToDashboard()">
+            🚀 View Asset Manager Dashboard
+        </button>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.textContent += message + '\n';
+            console.log(message);
+        }
+
+        function loadCorrectedTestData() {
+            try {
+                // Clear existing data
+                localStorage.clear();
+                log('✅ Cleared existing localStorage data');
+
+                // Create meetings with proper structure that matches Asset Manager Dashboard expectations
+                const meetingsWithProperStructure = [
+                    {
+                        id: 'meeting-001',
+                        name: 'LTI OMT Meeting - June 2023',
+                        date: '2023-06-15',
+                        attendees: ['Asset Manager', 'OMT Team', 'Operations Manager'],
+                        // This is the key - isolations array with proper structure
+                        isolations: [
+                            {
+                                id: 'CAHE-001-OLD',
+                                description: 'Heat Exchanger Long-term Isolation',
+                                'System/Equipment': 'CAHE-001-HX-001',
+                                'Planned Start Date': '2023-06-01', // 19+ months old
+                                'Risk Level': 'High',
+                                'MOC Required': 'Yes',
+                                'Equipment Issues': 'Yes'
+                            },
+                            {
+                                id: 'CAHE-002-OLD',
+                                description: 'Pump Isolation - Extended',
+                                'System/Equipment': 'CAHE-002-P-001',
+                                'Planned Start Date': '2023-07-15', // 18+ months old
+                                'Risk Level': 'Medium',
+                                'MOC Required': 'Yes',
+                                'Equipment Issues': 'No'
+                            }
+                        ],
+                        responses: {
+                            'CAHE-001-OLD': {
+                                riskLevel: 'High',
+                                mocRequired: 'Yes',
+                                mocStatus: 'In Progress',
+                                mocNumber: 'MOC-2023-001',
+                                actionRequired: 'Plan Work',
+                                equipmentDisconnectionRequired: 'Yes',
+                                equipmentRemovalRequired: 'No',
+                                riskLevelComment: 'Long-term isolation with corrosion concerns',
+                                mocRequiredComment: 'Safety modifications required for extended isolation',
+                                actionRequiredComment: 'Coordinate with maintenance team for equipment work',
+                                corrosionRisk: 'High',
+                                deadLegsRisk: 'Medium',
+                                automationLossRisk: 'Low',
+                                comments: 'Critical long-term isolation requiring Asset Manager review',
+                                actionItems: [
+                                    { description: 'Complete MOC documentation', owner: 'Engineering Team' },
+                                    { description: 'Schedule equipment disconnection', owner: 'Maintenance Team' }
+                                ]
+                            },
+                            'CAHE-002-OLD': {
+                                riskLevel: 'Medium',
+                                mocRequired: 'Yes',
+                                mocStatus: 'Completed',
+                                mocNumber: 'MOC-2023-002',
+                                actionRequired: 'Monitor',
+                                equipmentDisconnectionRequired: 'No',
+                                equipmentRemovalRequired: 'No',
+                                riskLevelComment: 'Stable isolation with regular monitoring',
+                                mocRequiredComment: 'MOC completed successfully',
+                                actionRequiredComment: 'Continue monitoring per schedule',
+                                corrosionRisk: 'Low',
+                                deadLegsRisk: 'Low',
+                                automationLossRisk: 'Medium',
+                                comments: 'Well-managed long-term isolation'
+                            }
+                        }
+                    },
+                    {
+                        id: 'meeting-002',
+                        name: 'LTI OMT Meeting - January 2023',
+                        date: '2023-01-20',
+                        attendees: ['Asset Manager', 'OMT Team', 'Safety Manager'],
+                        isolations: [
+                            {
+                                id: 'CAHE-003-VERY-OLD',
+                                description: 'Critical Valve Isolation',
+                                'System/Equipment': 'CAHE-003-V-001',
+                                'Planned Start Date': '2022-12-01', // 25+ months old (over 2 years!)
+                                'Risk Level': 'High',
+                                'MOC Required': 'Yes',
+                                'Equipment Issues': 'Yes'
+                            },
+                            {
+                                id: 'CAHE-004-OLD',
+                                description: 'Piping Section Isolation',
+                                'System/Equipment': 'CAHE-004-P-002',
+                                'Planned Start Date': '2023-01-20', // 24+ months old
+                                'Risk Level': 'Medium',
+                                'MOC Required': 'No',
+                                'Equipment Issues': 'Yes'
+                            }
+                        ],
+                        responses: {
+                            'CAHE-003-VERY-OLD': {
+                                riskLevel: 'High',
+                                mocRequired: 'Yes',
+                                mocStatus: 'Required',
+                                actionRequired: 'Urgent',
+                                equipmentDisconnectionRequired: 'Yes',
+                                equipmentRemovalRequired: 'Yes',
+                                riskLevelComment: 'Very long-term isolation - over 2 years old',
+                                mocRequiredComment: 'MOC required but not yet submitted',
+                                actionRequiredComment: 'Urgent action needed - exceeds acceptable timeframe',
+                                corrosionRisk: 'High',
+                                deadLegsRisk: 'High',
+                                automationLossRisk: 'High',
+                                comments: 'CRITICAL: This isolation has been active for over 2 years and requires immediate Asset Manager attention',
+                                actionItems: [
+                                    { description: 'Immediate MOC submission required', owner: 'Engineering Manager' },
+                                    { description: 'Equipment removal planning', owner: 'Asset Manager' },
+                                    { description: 'Risk assessment update', owner: 'Safety Team' }
+                                ]
+                            },
+                            'CAHE-004-OLD': {
+                                riskLevel: 'Medium',
+                                mocRequired: 'No',
+                                actionRequired: 'Plan Work',
+                                equipmentDisconnectionRequired: 'No',
+                                equipmentRemovalRequired: 'Yes',
+                                riskLevelComment: 'Long-term isolation with equipment removal planned',
+                                actionRequiredComment: 'Equipment removal scheduled for next shutdown',
+                                corrosionRisk: 'Medium',
+                                deadLegsRisk: 'Low',
+                                automationLossRisk: 'Low',
+                                comments: 'Planned equipment removal will resolve this long-term isolation'
+                            }
+                        }
+                    },
+                    {
+                        id: 'meeting-003',
+                        name: 'LTI OMT Meeting - March 2024',
+                        date: '2024-03-10',
+                        attendees: ['Asset Manager', 'OMT Team'],
+                        isolations: [
+                            {
+                                id: 'CAHE-005-MEDIUM',
+                                description: 'Instrument Isolation',
+                                'System/Equipment': 'CAHE-005-I-001',
+                                'Planned Start Date': '2024-03-01', // 10+ months old
+                                'Risk Level': 'Low',
+                                'MOC Required': 'Yes',
+                                'Equipment Issues': 'No'
+                            },
+                            {
+                                id: 'CAHE-007-BORDERLINE',
+                                description: 'Compressor Isolation',
+                                'System/Equipment': 'CAHE-007-C-001',
+                                'Planned Start Date': '2024-07-01', // 6+ months old (should appear in list)
+                                'Risk Level': 'Medium',
+                                'MOC Required': 'Yes',
+                                'Equipment Issues': 'Yes'
+                            },
+                            {
+                                id: 'CAHE-006-RECENT',
+                                description: 'New Valve Isolation',
+                                'System/Equipment': 'CAHE-006-V-002',
+                                'Planned Start Date': '2024-11-01', // 2+ months old (should NOT appear in 6+ month list)
+                                'Risk Level': 'Low',
+                                'MOC Required': 'No',
+                                'Equipment Issues': 'No'
+                            }
+                        ],
+                        responses: {
+                            'CAHE-005-MEDIUM': {
+                                riskLevel: 'Low',
+                                mocRequired: 'Yes',
+                                mocStatus: 'Submitted',
+                                mocNumber: 'MOC-2024-005',
+                                actionRequired: 'Monitor',
+                                equipmentDisconnectionRequired: 'No',
+                                equipmentRemovalRequired: 'No',
+                                riskLevelComment: '10-month isolation with good management',
+                                mocRequiredComment: 'MOC submitted and under review',
+                                actionRequiredComment: 'Continue monitoring while MOC is processed',
+                                corrosionRisk: 'Low',
+                                deadLegsRisk: 'Medium',
+                                automationLossRisk: 'Low',
+                                comments: 'Well-managed isolation approaching 1 year'
+                            },
+                            'CAHE-007-BORDERLINE': {
+                                riskLevel: 'Medium',
+                                mocRequired: 'Yes',
+                                mocStatus: 'Required',
+                                actionRequired: 'Plan Work',
+                                equipmentDisconnectionRequired: 'Yes',
+                                equipmentRemovalRequired: 'No',
+                                riskLevelComment: '6-month isolation requiring attention',
+                                mocRequiredComment: 'MOC submission needed',
+                                actionRequiredComment: 'Plan work for equipment disconnection',
+                                corrosionRisk: 'Medium',
+                                deadLegsRisk: 'Low',
+                                automationLossRisk: 'Medium',
+                                comments: 'Borderline 6-month isolation requiring Asset Manager review'
+                            },
+                            'CAHE-006-RECENT': {
+                                riskLevel: 'Low',
+                                mocRequired: 'No',
+                                actionRequired: 'Monitor',
+                                equipmentDisconnectionRequired: 'No',
+                                equipmentRemovalRequired: 'No',
+                                riskLevelComment: 'Recent isolation, low risk',
+                                actionRequiredComment: 'Continue monitoring',
+                                corrosionRisk: 'Low',
+                                deadLegsRisk: 'Low',
+                                automationLossRisk: 'Low',
+                                comments: 'Recent isolation, no immediate concerns'
+                            }
+                        }
+                    }
+                ];
+
+                // Save meetings using the correct storage key that AppContext expects
+                localStorage.setItem('savedMeetings', JSON.stringify(meetingsWithProperStructure));
+                log('✅ Saved 3 meetings with properly structured LTI data');
+
+                log('');
+                log('📊 EXPECTED ASSET MANAGER DASHBOARD METRICS:');
+                log('============================================');
+                log('🔢 Total LTIs: 7 (across all meetings)');
+                log('🔢 Total LTIs Over 6 Months: 6');
+                log('   - CAHE-001-OLD (19+ months) - High Risk');
+                log('   - CAHE-002-OLD (18+ months) - Medium Risk');
+                log('   - CAHE-003-VERY-OLD (25+ months) ⚠️ CRITICAL - High Risk');
+                log('   - CAHE-004-OLD (24+ months) ⚠️ CRITICAL - Medium Risk');
+                log('   - CAHE-005-MEDIUM (10+ months) - Low Risk');
+                log('   - CAHE-007-BORDERLINE (6+ months) - Medium Risk');
+                log('');
+                log('📈 Age Distribution:');
+                log('   - 6-12 months: 2 LTIs (CAHE-005-MEDIUM, CAHE-007-BORDERLINE)');
+                log('   - 1-2 years: 2 LTIs (CAHE-001-OLD, CAHE-002-OLD)');
+                log('   - 2+ years: 2 LTIs ⚠️ CRITICAL (CAHE-003-VERY-OLD, CAHE-004-OLD)');
+                log('');
+                log('📋 MOC Status:');
+                log('   - Required: 2 (CAHE-003-VERY-OLD, CAHE-007-BORDERLINE)');
+                log('   - Submitted: 1 (CAHE-005-MEDIUM)');
+                log('   - In Progress: 1 (CAHE-001-OLD)');
+                log('   - Completed: 1 (CAHE-002-OLD)');
+                log('   - Not Required: 2 (CAHE-004-OLD, CAHE-006-RECENT)');
+                log('');
+                log('🔧 Equipment Issues:');
+                log('   - LTIs with Equipment Disconnection: 3');
+                log('   - LTIs with Equipment Removal: 2');
+                log('');
+                log('⚠️ HIGH PRIORITY ITEMS:');
+                log('   - 2 LTIs over 2 years old (CRITICAL)');
+                log('   - 1 Urgent action required (CAHE-003-VERY-OLD)');
+                log('   - 2 MOCs not yet submitted');
+
+                document.getElementById('status').innerHTML = '<span class="success">✅ Corrected test data loaded successfully!</span>';
+                document.getElementById('redirectBtn').style.display = 'inline-block';
+
+            } catch (error) {
+                log('❌ Error loading corrected test data: ' + error.message);
+                document.getElementById('status').innerHTML = '<span style="color: red;">❌ Error loading corrected test data</span>';
+            }
+        }
+
+        function redirectToDashboard() {
+            window.location.href = 'http://localhost:3000/asset-manager-dashboard';
+        }
+
+        // Load test data when page loads
+        window.onload = function() {
+            setTimeout(loadCorrectedTestData, 1000); // Small delay to show loading
+        };
+    </script>
+</body>
+</html>
