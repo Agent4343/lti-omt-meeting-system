@@ -1,3 +1,9 @@
+// Polyfills for legacy environments (e.g. SharePoint 2013 corporate desktops)
+// NOTE: Material UI v5 does not officially support IE11, but these polyfills help with older engines.
+import 'react-app-polyfill/ie11';
+import 'react-app-polyfill/stable';
+import 'whatwg-fetch';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';

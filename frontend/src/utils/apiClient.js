@@ -11,6 +11,26 @@ class APIClient {
     this.timeout = 10000; // 10 seconds default timeout
   }
 
+  buildQueryString(params = {}) {
+    const keys = Object.keys(params || {});
+    if (keys.length === 0) return '';
+
+    // Prefer native URLSearchParams when available
+    if (typeof URLSearchParams !== 'undefined') {
+      try {
+        return new URLSearchParams(params).toString();
+      } catch {
+        // fall through to manual serialization
+      }
+    }
+
+    // Manual serialization for legacy browsers
+    return keys
+      .filter((k) => params[k] !== undefined && params[k] !== null)
+      .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(String(params[k]))}`)
+      .join('&');
+  }
+
   /**
    * Generic fetch wrapper with error handling
    */
@@ -22,7 +42,6 @@ class APIClient {
         'Content-Type': 'application/json',
         ...options.headers
       },
-      timeout: this.timeout,
       ...options
     };
 
@@ -31,13 +50,30 @@ class APIClient {
         console.log(`API Request: ${options.method || 'GET'} ${url}`);
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      const hasAbortController = typeof AbortController !== 'undefined';
+      const controller = hasAbortController ? new AbortController() : null;
+      const timeoutId = setTimeout(() => {
+        if (controller) controller.abort();
+      }, this.timeout);
 
-      const response = await fetch(url, {
+      const fetchPromise = fetch(url, {
         ...defaultOptions,
-        signal: controller.signal
+        ...(controller ? { signal: controller.signal } : {})
       });
+
+      // If AbortController is unavailable, we can't cancel fetch; emulate timeout via Promise.race.
+      const response = hasAbortController
+        ? await fetchPromise
+        : await Promise.race([
+            fetchPromise,
+            new Promise((_, reject) =>
+              setTimeout(() => {
+                const timeoutError = new Error(`Request timeout after ${this.timeout}ms`);
+                timeoutError.name = 'TimeoutError';
+                reject(timeoutError);
+              }, this.timeout)
+            )
+          ]);
 
       clearTimeout(timeoutId);
 
@@ -54,7 +90,7 @@ class APIClient {
 
       return { success: true, data, status: response.status };
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error && error.name === 'AbortError') {
         const timeoutError = new Error(`Request timeout after ${this.timeout}ms`);
         timeoutError.name = 'TimeoutError';
         throw timeoutError;
@@ -72,7 +108,7 @@ class APIClient {
    * GET request
    */
   async get(endpoint, params = {}) {
-    const queryString = new URLSearchParams(params).toString();
+    const queryString = this.buildQueryString(params);
     const url = queryString ? `${endpoint}?${queryString}` : endpoint;
     
     return this.makeRequest(url, { method: 'GET' });
