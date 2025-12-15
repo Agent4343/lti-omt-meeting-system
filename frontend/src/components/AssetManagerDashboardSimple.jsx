@@ -41,6 +41,7 @@ import {
 import { useAppContext } from '../context/AppContext';
 import { exportMeetingToPDF } from '../utils/pdfExport';
 import { calculateLTIAge } from '../utils/dateUtils';
+import { exportAssetManagerToCSV } from '../utils/csvExport';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -470,6 +471,21 @@ const AssetManagerDashboard = () => {
     }
   };
 
+  // Export to CSV
+  const handleExportCSV = () => {
+    try {
+      const result = exportAssetManagerToCSV(processedLTIData, 'all');
+      if (result.success) {
+        alert('CSV exported successfully!');
+      } else {
+        alert(`Error exporting CSV: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Error exporting CSV. Please try again.');
+    }
+  };
+
   // Export Meeting Agenda as PDF
   const handleExportAgendaPDF = async () => {
     try {
@@ -598,7 +614,17 @@ const AssetManagerDashboard = () => {
           color="secondary"
           size="large"
         >
-          Export Asset Manager Report
+          Export PDF
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportCSV}
+          color="info"
+          size="large"
+        >
+          Export CSV
         </Button>
       </Box>
 

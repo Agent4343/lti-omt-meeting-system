@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { 
-  Button, 
-  Typography, 
-  Box, 
-  Card, 
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Button,
+  Typography,
+  Box,
+  Card,
   CardContent,
   Container,
   Paper,
@@ -21,7 +21,18 @@ import {
   Chip,
   Switch,
   Tooltip,
-  FormControlLabel
+  FormControlLabel,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Collapse
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -33,6 +44,11 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import IsolationQuestionnaire from './IsolationQuestionnaire';
 
 function ReviewPage() {
@@ -46,6 +62,12 @@ function ReviewPage() {
   const [saveExitDialog, setSaveExitDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [saveProgress, setSaveProgress] = useState(false);
+
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showNavigator, setShowNavigator] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Function to check for related isolations based ONLY on the first 3 digits after CAHE-
   const checkForRelatedIsolations = (isolations, currentIsolation) => {
@@ -111,7 +133,80 @@ function ReviewPage() {
       setRelatedIsolations(related);
     }
   }, [currentIndex, isolations]);
-  
+
+  // Filter isolations based on search and status
+  const filteredIsolations = isolations.filter(isolation => {
+    // Search filter
+    const matchesSearch = searchTerm === '' ||
+      isolation.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      isolation.Title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      isolation.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      isolation['System/Equipment']?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Status filter
+    const isComplete = responses[isolation.id] && isIsolationComplete(responses[isolation.id]);
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'complete' && isComplete) ||
+      (statusFilter === 'incomplete' && !isComplete);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          if (currentIndex > 0) {
+            setCurrentIndex(currentIndex - 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          break;
+        case 'ArrowRight':
+          if (currentIndex < isolations.length - 1) {
+            setCurrentIndex(currentIndex + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          break;
+        case 's':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            localStorage.setItem('currentMeetingResponses', JSON.stringify(responses));
+            setSnackbar({ open: true, message: 'Progress saved!', severity: 'success' });
+          }
+          break;
+        case 'f':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            setShowNavigator(!showNavigator);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, isolations.length, responses, showNavigator]);
+
+  // Unsaved changes warning
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   // Check if an isolation response is complete - Updated for streamlined questionnaire
   const isIsolationComplete = (response) => {
     if (!response) return false;
@@ -338,6 +433,115 @@ function ReviewPage() {
         
         <Divider sx={{ mb: 4 }} />
         
+        {/* Quick Stats */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+          <Chip
+            label={`${isolations.filter(i => responses[i.id] && isIsolationComplete(responses[i.id])).length} Complete`}
+            color="success"
+            icon={<CheckCircleIcon />}
+          />
+          <Chip
+            label={`${isolations.filter(i => !responses[i.id] || !isIsolationComplete(responses[i.id])).length} Incomplete`}
+            color="warning"
+            icon={<ErrorIcon />}
+          />
+          <Chip
+            label={`${isolations.length} Total`}
+            variant="outlined"
+          />
+          <Tooltip title="Keyboard: ← → to navigate, Ctrl+S to save, Ctrl+F to search">
+            <Chip
+              icon={<KeyboardIcon />}
+              label="Shortcuts"
+              variant="outlined"
+              size="small"
+            />
+          </Tooltip>
+        </Box>
+
+        {/* Search and Filter */}
+        <Paper sx={{ p: 2, mb: 3, bgcolor: '#f5f5f5' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            <TextField
+              size="small"
+              placeholder="Search isolations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ minWidth: 250 }}
+            />
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="complete">Complete</MenuItem>
+                <MenuItem value="incomplete">Incomplete</MenuItem>
+              </Select>
+            </FormControl>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={showNavigator ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              onClick={() => setShowNavigator(!showNavigator)}
+            >
+              {showNavigator ? 'Hide' : 'Show'} Navigator
+            </Button>
+          </Box>
+
+          {/* Quick Navigator */}
+          <Collapse in={showNavigator}>
+            <Box sx={{ mt: 2, maxHeight: 200, overflowY: 'auto' }}>
+              <List dense>
+                {filteredIsolations.map((isolation, idx) => {
+                  const originalIndex = isolations.findIndex(i => i.id === isolation.id);
+                  const isComplete = responses[isolation.id] && isIsolationComplete(responses[isolation.id]);
+                  return (
+                    <ListItem
+                      key={isolation.id}
+                      button
+                      selected={originalIndex === currentIndex}
+                      onClick={() => {
+                        setCurrentIndex(originalIndex);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      sx={{ borderRadius: 1, mb: 0.5 }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        {isComplete ? (
+                          <CheckCircleIcon color="success" fontSize="small" />
+                        ) : (
+                          <ErrorIcon color="warning" fontSize="small" />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={isolation.Title || isolation.id}
+                        secondary={isolation['System/Equipment']}
+                        primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                        secondaryTypographyProps={{ variant: 'caption', noWrap: true }}
+                      />
+                    </ListItem>
+                  );
+                })}
+              </List>
+              {filteredIsolations.length === 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                  No isolations match your search
+                </Typography>
+              )}
+            </Box>
+          </Collapse>
+        </Paper>
+
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="h6">Overall Progress</Typography>
