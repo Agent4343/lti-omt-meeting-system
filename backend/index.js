@@ -115,13 +115,15 @@ const validateEmailInput = (req, res, next) => {
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: false,
+  secure: parseInt(process.env.SMTP_PORT) === 465, // Use TLS for port 465
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
   tls: {
-    ciphers: 'SSLv3'
+    // Use secure TLS settings - reject self-signed certs in production
+    rejectUnauthorized: process.env.NODE_ENV === 'production',
+    minVersion: 'TLSv1.2'
   }
 });
 

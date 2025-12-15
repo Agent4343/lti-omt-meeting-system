@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  IconButton, 
-  Box, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   Divider,
   Container,
   useMediaQuery,
@@ -75,22 +76,22 @@ function NavigationHeader() {
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem 
-            button 
-            key={item.text} 
-            onClick={() => navigate(item.path)}
-            selected={isActive(item.path)}
-            sx={{
-              '&.Mui-selected': {
-                bgcolor: 'rgba(25, 118, 210, 0.08)',
-                '&:hover': {
-                  bgcolor: 'rgba(25, 118, 210, 0.12)',
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              onClick={() => navigate(item.path)}
+              selected={isActive(item.path)}
+              sx={{
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(25, 118, 210, 0.08)',
+                  '&:hover': {
+                    bgcolor: 'rgba(25, 118, 210, 0.12)',
+                  },
                 },
-              },
-            }}
-          >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
           </ListItem>
         ))}
       </List>

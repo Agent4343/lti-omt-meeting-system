@@ -14,6 +14,7 @@ import AssetManagerReviewPage from './components/AssetManagerReviewPage';
 import AssetManagerDashboard from './components/AssetManagerDashboardSimple';
 import NavigationHeader from './components/NavigationHeader';
 import ErrorBoundary from './components/ErrorBoundary';
+import NotFoundPage from './components/NotFoundPage';
 
 // Context provider is now handled in index.jsx to avoid duplication
 // Theme and CssBaseline are handled in index.jsx for consistency
@@ -38,6 +39,7 @@ function App() {
               <Route path="/asset-manager-review" element={<AssetManagerReviewPage />} />
               <Route path="/asset-manager-dashboard" element={<AssetManagerDashboard />} />
               <Route path="/calendar" element={<MeetingCalendarPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Box>
         </Box>
