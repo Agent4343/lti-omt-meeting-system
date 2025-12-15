@@ -104,11 +104,13 @@ const AssetManagerDashboard = () => {
     };
   }, []);
 
-  // Function to load test data automatically
+  // Function to load test data automatically (only in memory, NOT saved to localStorage)
   const loadAssetManagerTestData = () => {
     try {
-      
+
       // Create meetings with proper isolations and responses structure
+      // NOTE: This is demo data shown only when no real data exists
+      // It is NOT saved to localStorage to avoid mixing with real data
       const meetingsWithAgedLTIs = [
         {
           id: 'meeting-001',
@@ -309,19 +311,10 @@ const AssetManagerDashboard = () => {
         }
       ];
 
-      // Save meetings to localStorage
-      localStorage.setItem('savedMeetings', JSON.stringify(meetingsWithAgedLTIs));
+      // DO NOT save test data to localStorage - only show in memory
+      // This prevents test data from mixing with real user data
 
-      // Also save to currentMeetingIsolations for compatibility
-      const allIsolations = [];
-      meetingsWithAgedLTIs.forEach(meeting => {
-        if (meeting.isolations) {
-          allIsolations.push(...meeting.isolations);
-        }
-      });
-      localStorage.setItem('currentMeetingIsolations', JSON.stringify(allIsolations));
-
-      // Update local state immediately
+      // Update local state immediately (demo data only)
       setLocalMeetings(meetingsWithAgedLTIs);
     } catch (error) {
       console.error('Error auto-loading test data:', error);
