@@ -49,20 +49,29 @@ const AssetManagerDashboard = () => {
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
 
-  // Load data from localStorage - always use localStorage as source of truth
+  // Load data from localStorage - combine savedMeetings AND pastMeetings
   useEffect(() => {
     const loadData = () => {
       try {
+        // Read from BOTH sources (finished meetings go to pastMeetings)
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
+        const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
+
+        // Combine both, avoiding duplicates by meeting id
+        const allMeetings = [...savedMeetings];
+        pastMeetings.forEach(pm => {
+          if (!allMeetings.find(m => m.id === pm.id)) {
+            allMeetings.push(pm);
+          }
+        });
 
         // If no data exists, auto-load test data
-        if (savedMeetings.length === 0) {
+        if (allMeetings.length === 0) {
           loadAssetManagerTestData();
           return;
         }
 
-        // Always use localStorage data (it's the source of truth)
-        setLocalMeetings(savedMeetings);
+        setLocalMeetings(allMeetings);
       } catch (error) {
         console.error('Error reading localStorage:', error);
       }
@@ -71,15 +80,15 @@ const AssetManagerDashboard = () => {
     // Load immediately
     loadData();
 
-    // Listen for storage events (changes from other tabs/components)
+    // Listen for storage events
     const handleStorageChange = (e) => {
-      if (e.key === 'savedMeetings' || e.key === 'currentMeetingResponses') {
+      if (e.key === 'savedMeetings' || e.key === 'pastMeetings' || e.key === 'currentMeetingResponses') {
         loadData();
       }
     };
     window.addEventListener('storage', handleStorageChange);
 
-    // Also poll for changes within the same tab
+    // Poll for changes within same tab
     const interval = setInterval(loadData, 3000);
 
     return () => {
