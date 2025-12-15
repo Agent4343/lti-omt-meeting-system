@@ -30,6 +30,7 @@ import {
   ListItemIcon
 } from '@mui/material';
 import { useState, useEffect } from 'react';
+import { calculateLTIAge } from '../utils/dateUtils';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -100,34 +101,10 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
     actionItems: []
   });
 
-  // Calculate LTI age if planned start date is available
-  const calculateLTIAge = (plannedStartDate) => {
-    if (!plannedStartDate) return 'Unknown';
-    
-    try {
-      const startDate = new Date(plannedStartDate);
-      const currentDate = new Date();
-      const diffTime = Math.abs(currentDate - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 30) {
-        return `${diffDays} days`;
-      } else if (diffDays < 365) {
-        const months = Math.floor(diffDays / 30);
-        return `${months} month${months > 1 ? 's' : ''}`;
-      } else {
-        const years = Math.floor(diffDays / 365);
-        const remainingMonths = Math.floor((diffDays % 365) / 30);
-        return `${years} year${years > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}` : ''}`;
-      }
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
-
-  // Get LTI age for current isolation
-  const ltiAge = calculateLTIAge(isolation?.['Planned Start Date'] || isolation?.plannedStartDate || isolation?.PlannedStartDate);
+  // Get LTI age for current isolation using utility function
   const plannedStartDate = isolation?.['Planned Start Date'] || isolation?.plannedStartDate || isolation?.PlannedStartDate;
+  const ltiAgeInfo = calculateLTIAge(plannedStartDate);
+  const ltiAge = ltiAgeInfo.display;
 
   // State for previous meeting data
   const [previousMeetingData, setPreviousMeetingData] = useState(null);
@@ -138,20 +115,16 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
   useEffect(() => {
     const savedResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
     const existingData = savedResponses[isolation.id];
-    
-    // ENHANCED DETECTION: Check multiple localStorage sources for previous meeting data
+
+    // Check multiple localStorage sources for previous meeting data
     let previousData = null;
-    
-    console.log('🔍 DEBUGGING PREVIOUS MEETING DETECTION:');
-    console.log('Current isolation ID:', isolation.id);
-    
+
     // Check all possible localStorage keys for previous meeting data
     const possibleKeys = ['savedMeetings', 'pastMeetings', 'previousMeetingResponses'];
-    
+
     for (const key of possibleKeys) {
       const data = JSON.parse(localStorage.getItem(key)) || [];
-      console.log(`📋 Checking ${key}:`, data);
-      
+
       if (key === 'previousMeetingResponses') {
         // Direct responses object
         if (data[isolation.id]) {
@@ -160,7 +133,6 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
             meetingDate: 'Previous Meeting',
             meetingName: 'Previous Meeting'
           };
-          console.log('✅ Found previous data in previousMeetingResponses:', previousData);
           break;
         }
       } else if (Array.isArray(data)) {
@@ -172,66 +144,37 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
               meetingDate: meeting.date || 'Previous Meeting',
               meetingName: meeting.name || 'Previous Meeting'
             };
-            console.log(`✅ Found previous data in ${key}:`, previousData);
             break;
           }
         }
         if (previousData) break;
       }
     }
-    
-    // Additional debug: Check what's actually in localStorage
-    console.log('🔍 ALL LOCALSTORAGE KEYS:', Object.keys(localStorage));
-    Object.keys(localStorage).forEach(key => {
-      if (key.includes('meeting') || key.includes('Meeting') || key.includes('response') || key.includes('Response')) {
-        console.log(`📋 ${key}:`, JSON.parse(localStorage.getItem(key) || '{}'));
-      }
-    });
-    
+
     // Check if previous data is meaningful (not just all N/A values)
     const isMeaningfulData = (data) => {
       if (!data) return false;
-      
+
       // Check if any of the key fields have non-N/A values
       const keyFields = ['riskLevel', 'mocRequired', 'actionRequired', 'corrosionRisk', 'deadLegsRisk', 'automationLossRisk'];
       const hasNonNAValues = keyFields.some(field => data[field] && data[field] !== 'N/A' && data[field] !== '');
-      
+
       // Check if there are any comments
-      const commentFields = ['comments', 'riskLevelComment', 'mocRequiredComment', 'actionRequiredComment', 
+      const commentFields = ['comments', 'riskLevelComment', 'mocRequiredComment', 'actionRequiredComment',
                            'corrosionRiskComment', 'deadLegsRiskComment', 'automationLossRiskComment'];
       const hasComments = commentFields.some(field => data[field] && data[field].trim() !== '');
-      
+
       // Check if there are action items
       const hasActionItems = data.actionItems && Array.isArray(data.actionItems) && data.actionItems.length > 0;
-      
+
       return hasNonNAValues || hasComments || hasActionItems;
     };
-    
+
     const meaningfulData = isMeaningfulData(previousData);
-    
-    console.log('🎯 FINAL RESULT:');
-    console.log('Previous data found:', !!previousData);
-    console.log('Previous data is meaningful:', meaningfulData);
-    console.log('Show previous data:', !!previousData && meaningfulData);
-    if (previousData) {
-      console.log('Previous data details:', previousData);
-      console.log('Data analysis:');
-      console.log('- Risk Level:', previousData.riskLevel);
-      console.log('- MOC Required:', previousData.mocRequired);
-      console.log('- Action Required:', previousData.actionRequired);
-      console.log('- Has Comments:', !!(previousData.comments && previousData.comments.trim()));
-      console.log('- Has Action Items:', !!(previousData.actionItems && previousData.actionItems.length > 0));
-    }
-    
+
     // Only show previous data if it exists AND is meaningful
     setPreviousMeetingData(previousData);
     setShowPreviousData(!!previousData && meaningfulData);
-    
-    // If we found previous data but it's not meaningful, log a warning
-    if (previousData && !meaningfulData) {
-      console.log('⚠️ WARNING: Previous meeting data found but contains only default N/A values');
-      console.log('This suggests the previous meeting was saved without completing the assessment');
-    }
     
     if (existingData) {
        // Load existing data for this isolation - INCLUDING all new fields

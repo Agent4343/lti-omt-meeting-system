@@ -40,6 +40,7 @@ import {
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
 import { exportMeetingToPDF } from '../utils/pdfExport';
+import { calculateLTIAge } from '../utils/dateUtils';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -53,28 +54,21 @@ const AssetManagerDashboard = () => {
     const autoLoadTestData = () => {
       try {
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
-        console.log('🔍 Asset Manager Dashboard - localStorage check:', {
-          savedMeetingsCount: savedMeetings.length,
-          contextMeetingsCount: meetings.length,
-          savedMeetings: savedMeetings
-        });
-        
+
         // If no data exists, auto-load test data
         if (savedMeetings.length === 0 && meetings.length === 0) {
-          console.log('🚀 Auto-loading test data for Asset Manager Dashboard...');
           loadAssetManagerTestData();
           return;
         }
-        
+
         // If localStorage has more meetings than context, use localStorage data
         if (savedMeetings.length > meetings.length) {
-          console.log('📊 Using localStorage data instead of context');
           setLocalMeetings(savedMeetings);
         } else {
           setLocalMeetings(meetings);
         }
       } catch (error) {
-        console.error('❌ Error reading localStorage:', error);
+        console.error('Error reading localStorage:', error);
         setLocalMeetings(meetings);
       }
     };
@@ -82,8 +76,8 @@ const AssetManagerDashboard = () => {
     // Check immediately
     autoLoadTestData();
 
-    // Set up interval to check for changes
-    const interval = setInterval(autoLoadTestData, 2000);
+    // Set up interval to check for changes (reduced frequency for performance)
+    const interval = setInterval(autoLoadTestData, 5000);
 
     return () => clearInterval(interval);
   }, [meetings]);
@@ -91,7 +85,6 @@ const AssetManagerDashboard = () => {
   // Function to load test data automatically
   const loadAssetManagerTestData = () => {
     try {
-      console.log('🧪 Auto-loading Asset Manager test data...');
       
       // Create meetings with proper isolations and responses structure
       const meetingsWithAgedLTIs = [
@@ -308,82 +301,28 @@ const AssetManagerDashboard = () => {
 
       // Update local state immediately
       setLocalMeetings(meetingsWithAgedLTIs);
-      
-      console.log('✅ Asset Manager Test Data Auto-loaded Successfully!');
-      console.log('📊 Dashboard should now show: Total LTIs: 6, 6+ Months Old: 6, MOCs Required: 5');
-
     } catch (error) {
-      console.error('❌ Error auto-loading test data:', error);
-    }
-  };
-
-  // Debug log whenever meetings change
-  useEffect(() => {
-    console.log('🔄 Asset Manager Dashboard - meetings updated:', {
-      contextMeetings: meetings.length,
-      localMeetings: localMeetings.length
-    });
-  }, [meetings, localMeetings]);
-
-  // Calculate LTI age in days from planned start date
-  const calculateLTIAge = (plannedStartDate) => {
-    if (!plannedStartDate) return { days: 0, display: 'Unknown', isSixMonthsPlus: false };
-    
-    try {
-      const startDate = new Date(plannedStartDate);
-      const currentDate = new Date();
-      const diffTime = Math.abs(currentDate - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      const isSixMonthsPlus = diffDays >= 183; // 6 months = ~183 days
-      
-      let display = '';
-      if (diffDays < 30) {
-        display = `${diffDays} days`;
-      } else if (diffDays < 365) {
-        const months = Math.floor(diffDays / 30);
-        display = `${months} months`;
-      } else {
-        const years = Math.floor(diffDays / 365);
-        const months = Math.floor((diffDays % 365) / 30);
-        display = `${years} year${years > 1 ? 's' : ''}${months > 0 ? ` ${months} months` : ''}`;
-      }
-      
-      return { days: diffDays, display, isSixMonthsPlus };
-    } catch (error) {
-      return { days: 0, display: 'Invalid Date', isSixMonthsPlus: false };
+      console.error('Error auto-loading test data:', error);
     }
   };
 
   // Process all LTI data from meetings - use localMeetings instead of meetings
   const processedLTIData = useMemo(() => {
     const allLTIs = [];
-    
-    console.log('🔍 Processing LTI Data - localMeetings:', localMeetings);
-    
+
     localMeetings.forEach(meeting => {
-      console.log('📋 Processing meeting:', meeting.id, meeting.date);
-      console.log('   - Has isolations:', !!meeting.isolations, meeting.isolations?.length || 0);
-      console.log('   - Has responses:', !!meeting.responses, Object.keys(meeting.responses || {}).length);
-      
       if (meeting.isolations && meeting.responses) {
         meeting.isolations.forEach(isolation => {
           const response = meeting.responses[isolation.id] || {};
           const ageInfo = calculateLTIAge(isolation['Planned Start Date'] || isolation.plannedStartDate);
-          
-          console.log(`   - Processing LTI ${isolation.id}:`, {
-            plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
-            ageInfo: ageInfo,
-            hasResponse: !!response.riskLevel
-          });
-          
+
           const ltiData = {
             id: isolation.id,
             description: isolation.description || isolation.Title || 'No description',
             plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
             ageInfo: ageInfo,
             meetingDate: meeting.date,
-            
+
             // Assessment data
             riskLevel: response.riskLevel || 'N/A',
             businessImpact: response.businessImpact || 'N/A',
@@ -399,21 +338,18 @@ const AssetManagerDashboard = () => {
             actionRequired: response.actionRequired || 'N/A',
             actionItems: response.actionItems || [],
             comments: response.comments || '',
-            
+
             // WMS Manual risks
             corrosionRisk: response.corrosionRisk || 'N/A',
             deadLegsRisk: response.deadLegsRisk || 'N/A',
             automationLossRisk: response.automationLossRisk || 'N/A'
           };
-          
+
           allLTIs.push(ltiData);
         });
-      } else {
-        console.log('   ⚠️ Meeting missing isolations or responses');
       }
     });
-    
-    console.log('🎯 Final processed LTIs:', allLTIs.length, allLTIs);
+
     return allLTIs;
   }, [localMeetings]);
 
