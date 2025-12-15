@@ -49,38 +49,44 @@ const AssetManagerDashboard = () => {
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
 
-  // Auto-load test data if no data exists
+  // Load data from localStorage - always use localStorage as source of truth
   useEffect(() => {
-    const autoLoadTestData = () => {
+    const loadData = () => {
       try {
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
 
         // If no data exists, auto-load test data
-        if (savedMeetings.length === 0 && meetings.length === 0) {
+        if (savedMeetings.length === 0) {
           loadAssetManagerTestData();
           return;
         }
 
-        // If localStorage has more meetings than context, use localStorage data
-        if (savedMeetings.length > meetings.length) {
-          setLocalMeetings(savedMeetings);
-        } else {
-          setLocalMeetings(meetings);
-        }
+        // Always use localStorage data (it's the source of truth)
+        setLocalMeetings(savedMeetings);
       } catch (error) {
         console.error('Error reading localStorage:', error);
-        setLocalMeetings(meetings);
       }
     };
 
-    // Check immediately
-    autoLoadTestData();
+    // Load immediately
+    loadData();
 
-    // Set up interval to check for changes (reduced frequency for performance)
-    const interval = setInterval(autoLoadTestData, 5000);
+    // Listen for storage events (changes from other tabs/components)
+    const handleStorageChange = (e) => {
+      if (e.key === 'savedMeetings' || e.key === 'currentMeetingResponses') {
+        loadData();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
 
-    return () => clearInterval(interval);
-  }, [meetings]);
+    // Also poll for changes within the same tab
+    const interval = setInterval(loadData, 3000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Function to load test data automatically
   const loadAssetManagerTestData = () => {
