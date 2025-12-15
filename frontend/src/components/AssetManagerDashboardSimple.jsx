@@ -538,13 +538,12 @@ const AssetManagerDashboard = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <strong>Debug:</strong> Context meetings: {meetings.length}, Local meetings: {localMeetings.length}, 
-          Total LTIs: {dashboardStats.totalLTIs}, 6+ months: {dashboardStats.sixMonthsPlus}
-        </Alert>
-      )}
+      {/* Debug Info - Always show to help diagnose count issues */}
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <strong>Data Sources:</strong> {localMeetings.length} meetings loaded |
+        Unique LTI IDs: {processedLTIData.length} |
+        Raw isolation count: {localMeetings.reduce((acc, m) => acc + (m.isolations?.length || 0), 0)}
+      </Alert>
 
       {/* Page Header */}
       <Box sx={{ mb: 4 }}>
