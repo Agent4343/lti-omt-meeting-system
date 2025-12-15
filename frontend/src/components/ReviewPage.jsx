@@ -443,16 +443,6 @@ function ReviewPage() {
                 // CRITICAL FIX: Immediately save to localStorage to ensure all data persists
                 localStorage.setItem('currentMeetingResponses', JSON.stringify(updatedResponses));
                 
-                console.log('🔍 ReviewPage - Data saved for isolation:', isolationId);
-                console.log('🔍 ReviewPage - Complete data object:', data);
-                console.log('🔍 ReviewPage - Conditional comment fields:', {
-                  riskLevelComment: data.riskLevelComment,
-                  mocRequiredComment: data.mocRequiredComment,
-                  actionRequiredComment: data.actionRequiredComment,
-                  corrosionRiskComment: data.corrosionRiskComment,
-                  deadLegsRiskComment: data.deadLegsRiskComment,
-                  automationLossRiskComment: data.automationLossRiskComment
-                });
               }}
             />
           </CardContent>

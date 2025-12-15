@@ -30,6 +30,7 @@ import {
   ListItemIcon
 } from '@mui/material';
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { calculateLTIAge } from '../utils/dateUtils';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
@@ -1320,5 +1321,20 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
     </Paper>
   );
 }
+
+IsolationQuestionnaire.propTypes = {
+  isolation: PropTypes.shape({
+    id: PropTypes.string,
+    description: PropTypes.string,
+    Title: PropTypes.string,
+    'Planned Start Date': PropTypes.string,
+    plannedStartDate: PropTypes.string
+  }),
+  onDataChange: PropTypes.func.isRequired
+};
+
+IsolationQuestionnaire.defaultProps = {
+  isolation: null
+};
 
 export default IsolationQuestionnaire;

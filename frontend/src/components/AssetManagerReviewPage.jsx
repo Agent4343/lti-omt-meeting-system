@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -53,12 +53,7 @@ function AssetManagerReviewPage() {
 
   const [filterPeriod, setFilterPeriod] = useState('6-months');
 
-  useEffect(() => {
-    // Load meeting data and filter for Asset Manager review
-    loadAssetManagerReviewData();
-  }, [filterPeriod]);
-
-  const loadAssetManagerReviewData = () => {
+  const loadAssetManagerReviewData = useCallback(() => {
     try {
       // Get all meetings from localStorage - check multiple possible keys
       const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
@@ -224,7 +219,12 @@ function AssetManagerReviewPage() {
     } catch (error) {
       console.error('Error loading Asset Manager review data:', error);
     }
-  };
+  }, [filterPeriod]);
+
+  // Load data when filter period changes
+  useEffect(() => {
+    loadAssetManagerReviewData();
+  }, [loadAssetManagerReviewData]);
 
   const handleExportPDF = async () => {
     try {

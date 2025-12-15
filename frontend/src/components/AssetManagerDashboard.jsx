@@ -56,6 +56,7 @@ import {
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
 import { exportMeetingToPDF } from '../utils/pdfExport';
+import { calculateLTIAge, getAgeCategoryColor } from '../utils/dateUtils';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -64,48 +65,6 @@ const AssetManagerDashboard = () => {
   const [selectedLTI, setSelectedLTI] = useState(null);
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [sortBy, setSortBy] = useState('age');
-
-  // Calculate LTI age in days from planned start date
-  const calculateLTIAge = (plannedStartDate) => {
-    if (!plannedStartDate) return { days: 0, display: 'Unknown', category: 'unknown' };
-    
-    try {
-      const startDate = new Date(plannedStartDate);
-      const currentDate = new Date();
-      const diffTime = Math.abs(currentDate - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      let display = '';
-      let category = '';
-      
-      if (diffDays < 30) {
-        display = `${diffDays} days`;
-        category = 'recent';
-      } else if (diffDays < 183) { // Less than 6 months
-        const months = Math.floor(diffDays / 30);
-        display = `${months} month${months > 1 ? 's' : ''}`;
-        category = 'medium';
-      } else if (diffDays < 365) { // 6-12 months
-        const months = Math.floor(diffDays / 30);
-        display = `${months} month${months > 1 ? 's' : ''}`;
-        category = 'sixplus';
-      } else if (diffDays < 730) { // 1-2 years
-        const years = Math.floor(diffDays / 365);
-        const months = Math.floor((diffDays % 365) / 30);
-        display = `${years} year${years > 1 ? 's' : ''}${months > 0 ? ` ${months} month${months > 1 ? 's' : ''}` : ''}`;
-        category = 'oneyearplus';
-      } else { // 2+ years
-        const years = Math.floor(diffDays / 365);
-        const months = Math.floor((diffDays % 365) / 30);
-        display = `${years} year${years > 1 ? 's' : ''}${months > 0 ? ` ${months} month${months > 1 ? 's' : ''}` : ''}`;
-        category = 'twoyearplus';
-      }
-      
-      return { days: diffDays, display, category };
-    } catch (error) {
-      return { days: 0, display: 'Invalid Date', category: 'unknown' };
-    }
-  };
 
   // Process all LTI data from meetings
   const processedLTIData = useMemo(() => {
@@ -285,14 +244,8 @@ const AssetManagerDashboard = () => {
     }
   };
 
-  const getAgeColor = (category) => {
-    switch (category) {
-      case 'twoyearplus': return 'error';
-      case 'oneyearplus': return 'warning';
-      case 'sixplus': return 'info';
-      default: return 'default';
-    }
-  };
+  // Use imported getAgeCategoryColor from dateUtils
+  const getAgeColor = getAgeCategoryColor;
 
   const handleViewDetails = (lti) => {
     setSelectedLTI(lti);

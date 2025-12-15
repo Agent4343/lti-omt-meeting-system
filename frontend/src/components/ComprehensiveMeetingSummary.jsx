@@ -196,14 +196,6 @@ function ComprehensiveMeetingSummary() {
         Math.round((data.riskAnalysis.distribution[risk].count / reviewedCount) * 100) : 0;
     });
     
-    console.log('Meeting Data Calculation:', {
-      totalIsolations: total,
-      reviewedCount: reviewedCount,
-      actualTotal: actualTotal,
-      criticalCount: criticalCount,
-      responses: responses ? Object.keys(responses) : 'none'
-    });
-    
     setMeetingData(data);
   };
   
