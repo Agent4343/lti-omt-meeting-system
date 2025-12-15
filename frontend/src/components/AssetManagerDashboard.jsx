@@ -55,6 +55,7 @@ import {
   Report as ReportIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
+import { exportMeetingToPDF } from '../utils/pdfExport';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -302,10 +303,55 @@ const AssetManagerDashboard = () => {
     setAgendaDialogOpen(true);
   };
 
-  const exportToPDF = () => {
-    // This would integrate with the existing PDF export system
-    console.log('Exporting Asset Manager Report to PDF...');
-    alert('PDF export functionality will be integrated with the existing PDF system');
+  const exportToPDF = async () => {
+    try {
+      const reportData = {
+        date: new Date().toISOString().split('T')[0],
+        attendees: ['Asset Manager', 'Operations Manager', 'Maintenance Manager'],
+        isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
+          id: lti.id,
+          description: lti.description,
+          'Planned Start Date': lti.plannedStartDate
+        })),
+        responses: dashboardStats.sixMonthsPlusLTIs.reduce((acc, lti) => {
+          acc[lti.id] = {
+            riskLevel: lti.riskLevel,
+            mocRequired: lti.mocRequired,
+            mocNumber: lti.mocNumber,
+            partsRequired: lti.partsRequired,
+            actionRequired: lti.actionRequired,
+            comments: `Age: ${lti.ageInfo.display}. ${lti.comments || 'Asset Manager Review Required.'}`
+          };
+          return acc;
+        }, {}),
+        meetingData: {
+          executiveSummary: {
+            totalIsolationsReviewed: dashboardStats.sixMonthsPlus,
+            criticalFindings: dashboardStats.criticalRisk + dashboardStats.highRisk,
+            actionItemsGenerated: dashboardStats.mocRequired,
+            relatedIsolationWarnings: []
+          },
+          riskAnalysis: {
+            distribution: {
+              Critical: { count: dashboardStats.criticalRisk },
+              High: { count: dashboardStats.highRisk },
+              Medium: { count: dashboardStats.mediumRisk },
+              Low: { count: dashboardStats.lowRisk }
+            }
+          }
+        }
+      };
+
+      const result = await exportMeetingToPDF(reportData);
+      if (result.success) {
+        alert('Asset Manager Report exported successfully!');
+      } else {
+        alert(`Error exporting report: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting Asset Manager Report:', error);
+      alert('Error exporting report. Please try again.');
+    }
   };
 
   return (
