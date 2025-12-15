@@ -35,7 +35,8 @@ import ReportIcon from '@mui/icons-material/Report';
 import BusinessIcon from '@mui/icons-material/Business';
 
 function IsolationQuestionnaire({ isolation, onDataChange }) {
-  const [formData, setFormData] = useState({
+  // Default form state
+  const defaultFormData = {
     // Core Fields (Always visible)
     riskLevel: 'N/A',
     mocRequired: 'N/A',
@@ -67,7 +68,9 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
 
     // Action Items
     actionItems: []
-  });
+  };
+
+  const [formData, setFormData] = useState(defaultFormData);
 
   // Get LTI age
   const plannedStartDate = isolation?.['Planned Start Date'] || isolation?.plannedStartDate;
@@ -75,10 +78,14 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
   const ltiAge = ltiAgeInfo.display;
   const isSixMonthsPlus = ltiAgeInfo.isSixMonthsPlus;
 
-  // Load existing data
+  // Reset and load data when isolation changes
   useEffect(() => {
+    // First reset to defaults
+    setFormData(defaultFormData);
+
+    // Then load any existing saved data for this isolation
     const savedResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
-    const existingData = savedResponses[isolation.id];
+    const existingData = savedResponses[isolation?.id];
 
     if (existingData) {
       setFormData(prev => ({
@@ -86,7 +93,7 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
         ...existingData
       }));
     }
-  }, [isolation.id]);
+  }, [isolation?.id]);
 
   const handleChange = (field, value) => {
     const newData = { ...formData, [field]: value };
