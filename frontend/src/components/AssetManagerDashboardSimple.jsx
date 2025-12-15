@@ -58,10 +58,16 @@ const AssetManagerDashboard = () => {
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
         const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
 
-        // Combine both, avoiding duplicates by meeting id
+        // Combine both, avoiding duplicates by meeting id or timestamp
         const allMeetings = [...savedMeetings];
         pastMeetings.forEach(pm => {
-          if (!allMeetings.find(m => m.id === pm.id)) {
+          // Use id if available, otherwise use timestamp for deduplication
+          const pmKey = pm.id || pm.timestamp;
+          const isDuplicate = allMeetings.find(m => {
+            const mKey = m.id || m.timestamp;
+            return mKey && pmKey && mKey === pmKey;
+          });
+          if (!isDuplicate) {
             allMeetings.push(pm);
           }
         });
