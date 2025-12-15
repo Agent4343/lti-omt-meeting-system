@@ -323,10 +323,16 @@ const AssetManagerDashboard = () => {
   };
 
   // Process all LTI data from meetings - use localMeetings instead of meetings
+  // Deduplicate by isolation ID, keeping the most recent meeting's data
   const processedLTIData = useMemo(() => {
-    const allLTIs = [];
+    const ltiMap = new Map(); // Use Map to track unique LTIs by ID
 
-    localMeetings.forEach(meeting => {
+    // Sort meetings by date (oldest first) so newer data overwrites older
+    const sortedMeetings = [...localMeetings].sort((a, b) =>
+      new Date(a.date || 0) - new Date(b.date || 0)
+    );
+
+    sortedMeetings.forEach(meeting => {
       if (meeting.isolations && meeting.responses) {
         meeting.isolations.forEach(isolation => {
           const response = meeting.responses[isolation.id] || {};
@@ -361,12 +367,14 @@ const AssetManagerDashboard = () => {
             automationLossRisk: response.automationLossRisk || 'N/A'
           };
 
-          allLTIs.push(ltiData);
+          // Store by ID - newer meetings will overwrite older ones
+          ltiMap.set(isolation.id, ltiData);
         });
       }
     });
 
-    return allLTIs;
+    // Convert Map values back to array
+    return Array.from(ltiMap.values());
   }, [localMeetings]);
 
   // Calculate dashboard statistics
