@@ -39,6 +39,7 @@ import {
   Error as ErrorIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
+import { exportMeetingToPDF } from '../utils/pdfExport';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -466,6 +467,100 @@ const AssetManagerDashboard = () => {
     setAgendaDialogOpen(true);
   };
 
+  // Export Asset Manager Report as PDF
+  const handleExportReport = async () => {
+    try {
+      const reportData = {
+        date: new Date().toISOString().split('T')[0],
+        attendees: ['Asset Manager', 'OMT Team'],
+        isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
+          id: lti.id,
+          description: lti.description,
+          'Planned Start Date': lti.plannedStartDate
+        })),
+        responses: dashboardStats.sixMonthsPlusLTIs.reduce((acc, lti) => {
+          acc[lti.id] = {
+            riskLevel: lti.riskLevel,
+            mocRequired: lti.mocRequired,
+            mocNumber: lti.mocNumber,
+            partsRequired: lti.partsRequired,
+            actionRequired: lti.actionRequired,
+            comments: `Age: ${lti.ageInfo.display}. ${lti.comments || 'Asset Manager Review Required.'}`
+          };
+          return acc;
+        }, {}),
+        meetingData: {
+          executiveSummary: {
+            totalIsolationsReviewed: dashboardStats.sixMonthsPlus,
+            criticalFindings: dashboardStats.criticalRisk + dashboardStats.highRisk,
+            actionItemsGenerated: dashboardStats.mocRequired,
+            relatedIsolationWarnings: []
+          },
+          riskAnalysis: {
+            distribution: {
+              Critical: { count: dashboardStats.criticalRisk },
+              High: { count: dashboardStats.highRisk },
+              Medium: { count: processedLTIData.filter(lti => lti.riskLevel === 'Medium').length },
+              Low: { count: processedLTIData.filter(lti => lti.riskLevel === 'Low').length }
+            }
+          }
+        }
+      };
+
+      const result = await exportMeetingToPDF(reportData);
+      if (result.success) {
+        alert('Asset Manager Report exported successfully!');
+      } else {
+        alert(`Error exporting report: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting Asset Manager Report:', error);
+      alert('Error exporting report. Please try again.');
+    }
+  };
+
+  // Export Meeting Agenda as PDF
+  const handleExportAgendaPDF = async () => {
+    try {
+      const agendaData = {
+        date: new Date().toISOString().split('T')[0],
+        attendees: ['Asset Manager', 'OMT Team', 'Operations Manager'],
+        isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
+          id: lti.id,
+          description: lti.description,
+          'Planned Start Date': lti.plannedStartDate
+        })),
+        responses: dashboardStats.sixMonthsPlusLTIs.reduce((acc, lti) => {
+          acc[lti.id] = {
+            riskLevel: lti.riskLevel,
+            mocRequired: lti.mocRequired,
+            comments: `Meeting Agenda Item - ${lti.ageInfo.display} old, ${lti.riskLevel} risk`
+          };
+          return acc;
+        }, {}),
+        meetingData: {
+          executiveSummary: {
+            totalIsolationsReviewed: dashboardStats.totalLTIs,
+            criticalFindings: dashboardStats.criticalRisk + dashboardStats.highRisk,
+            actionItemsGenerated: dashboardStats.urgentAction,
+            relatedIsolationWarnings: []
+          }
+        }
+      };
+
+      const result = await exportMeetingToPDF(agendaData);
+      if (result.success) {
+        alert('Meeting Agenda exported successfully!');
+        setAgendaDialogOpen(false);
+      } else {
+        alert(`Error exporting agenda: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting Meeting Agenda:', error);
+      alert('Error exporting agenda. Please try again.');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Debug Info */}
@@ -548,6 +643,7 @@ const AssetManagerDashboard = () => {
         <Button
           variant="outlined"
           startIcon={<DownloadIcon />}
+          onClick={handleExportReport}
           color="secondary"
           size="large"
         >
@@ -894,7 +990,7 @@ const AssetManagerDashboard = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAgendaDialogOpen(false)}>Close</Button>
-          <Button variant="contained" startIcon={<DownloadIcon />}>
+          <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleExportAgendaPDF}>
             Export Agenda PDF
           </Button>
         </DialogActions>
