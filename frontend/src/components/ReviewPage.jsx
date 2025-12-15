@@ -125,11 +125,61 @@ function ReviewPage() {
   
   // State to store related isolations (based on 3-digit prefix)
   const [relatedIsolations, setRelatedIsolations] = useState([]);
-  
+
+  // Calculate LTI age helper function - MUST be defined before isIsolationComplete
+  const calculateLTIAge = (plannedStartDate) => {
+    if (!plannedStartDate) return 'Unknown';
+
+    try {
+      const startDate = new Date(plannedStartDate);
+      const currentDate = new Date();
+      const diffTime = Math.abs(currentDate - startDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 30) {
+        return `${diffDays} days`;
+      } else if (diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        return `${months} month${months > 1 ? 's' : ''}`;
+      } else {
+        const years = Math.floor(diffDays / 365);
+        const remainingMonths = Math.floor((diffDays % 365) / 30);
+        return `${years} year${years > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}` : ''}`;
+      }
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Check if an isolation response is complete - MUST be defined before filteredIsolations
+  const isIsolationComplete = (response) => {
+    if (!response) return false;
+
+    // Essential fields for streamlined questionnaire
+    // Overall Risk Level (required)
+    if (!response.riskLevel || response.riskLevel === 'N/A') return false;
+
+    // MOC Required (required)
+    if (!response.mocRequired || response.mocRequired === 'N/A') return false;
+
+    // If MOC is required, check if MOC number is provided
+    if (response.mocRequired === 'Yes' && !response.mocNumber) return false;
+
+    // Action Required (required)
+    if (!response.actionRequired || response.actionRequired === 'N/A') return false;
+
+    // WMS Manual Risk Assessment (required for compliance)
+    if (!response.corrosionRisk || response.corrosionRisk === 'N/A') return false;
+    if (!response.deadLegsRisk || response.deadLegsRisk === 'N/A') return false;
+    if (!response.automationLossRisk || response.automationLossRisk === 'N/A') return false;
+
+    return true;
+  };
+
   // Check for related isolations when current isolation changes
   useEffect(() => {
-    if (currentIsolation) {
-      const related = checkForRelatedIsolations(isolations, currentIsolation);
+    if (isolations[currentIndex]) {
+      const related = checkForRelatedIsolations(isolations, isolations[currentIndex]);
       setRelatedIsolations(related);
     }
   }, [currentIndex, isolations]);
@@ -207,63 +257,6 @@ function ReviewPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Check if an isolation response is complete - Updated for streamlined questionnaire
-  const isIsolationComplete = (response) => {
-    if (!response) return false;
-    
-    // Essential fields for streamlined questionnaire
-    // Overall Risk Level (required)
-    if (!response.riskLevel || response.riskLevel === 'N/A') return false;
-    
-    // MOC Required (required)
-    if (!response.mocRequired || response.mocRequired === 'N/A') return false;
-    
-    // If MOC is required, check if MOC number is provided
-    if (response.mocRequired === 'Yes' && !response.mocNumber) return false;
-    
-    // Action Required (required)
-    if (!response.actionRequired || response.actionRequired === 'N/A') return false;
-    
-    // WMS Manual Risk Assessment (required for compliance)
-    if (!response.corrosionRisk || response.corrosionRisk === 'N/A') return false;
-    if (!response.deadLegsRisk || response.deadLegsRisk === 'N/A') return false;
-    if (!response.automationLossRisk || response.automationLossRisk === 'N/A') return false;
-    
-    // For LTIs over 6 months, Asset Manager Review fields are required
-    const ltiAge = calculateLTIAge(isolations[currentIndex]?.['Planned Start Date'] || isolations[currentIndex]?.plannedStartDate || isolations[currentIndex]?.PlannedStartDate);
-    if ((ltiAge.includes('month') && parseInt(ltiAge) >= 6) || ltiAge.includes('year')) {
-      if (!response.assetManagerReviewRequired || response.assetManagerReviewRequired === 'N/A') return false;
-      if (!response.resolutionStrategy || response.resolutionStrategy === 'N/A') return false;
-    }
-    
-    return true;
-  };
-
-  // Calculate LTI age helper function (moved up for use in validation)
-  const calculateLTIAge = (plannedStartDate) => {
-    if (!plannedStartDate) return 'Unknown';
-    
-    try {
-      const startDate = new Date(plannedStartDate);
-      const currentDate = new Date();
-      const diffTime = Math.abs(currentDate - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 30) {
-        return `${diffDays} days`;
-      } else if (diffDays < 365) {
-        const months = Math.floor(diffDays / 30);
-        return `${months} month${months > 1 ? 's' : ''}`;
-      } else {
-        const years = Math.floor(diffDays / 365);
-        const remainingMonths = Math.floor((diffDays % 365) / 30);
-        return `${years} year${years > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}` : ''}`;
-      }
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
-  
   // Calculate completion percentage
   const getCompletionPercentage = () => {
     if (isolations.length === 0) return 0;
