@@ -944,30 +944,85 @@ function PastMeetingsPage() {
                                           </Alert>
                                         </Grid>
                                       )}
-                                      
+
+                                      {/* Core Assessment */}
                                       <Grid item xs={12} sm={6}>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
                                           <strong>Risk Level:</strong> {riskLevel}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                                          <strong>Duration:</strong> {response.isolationDuration || 'N/A'}
+                                          <strong>Action Required:</strong> {response.actionRequired || 'N/A'}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                                          <strong>Business Impact:</strong> {response.businessImpact || 'N/A'}
-                                        </Typography>
-                                      </Grid>
-                                      <Grid item xs={12} sm={6}>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
                                           <strong>MOC Required:</strong> {response.mocRequired || 'N/A'}
                                         </Typography>
+                                        {response.mocRequired === 'Yes' && (
+                                          <>
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>MOC Number:</strong> {response.mocNumber || 'Not specified'}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>MOC Status:</strong> {response.mocStatus || 'N/A'}
+                                            </Typography>
+                                          </>
+                                        )}
+                                      </Grid>
+
+                                      {/* Parts & Equipment */}
+                                      <Grid item xs={12} sm={6}>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
                                           <strong>Parts Required:</strong> {response.partsRequired || 'N/A'}
                                         </Typography>
+                                        {response.partsRequired === 'Yes' && (
+                                          <>
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>Parts Status:</strong> {response.partsStatus || 'N/A'}
+                                            </Typography>
+                                            {response.partsExpectedDate && (
+                                              <Typography variant="body2" color="text.secondary" gutterBottom>
+                                                <strong>Parts Expected:</strong> {new Date(response.partsExpectedDate).toLocaleDateString()}
+                                              </Typography>
+                                            )}
+                                          </>
+                                        )}
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                                          <strong>Support Required:</strong> {response.supportRequired || 'N/A'}
+                                          <strong>Equipment Disconnection:</strong> {response.equipmentDisconnectionRequired || 'N/A'}
                                         </Typography>
+                                        {response.plannedResolutionDate && (
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            <strong>Planned Resolution:</strong> {new Date(response.plannedResolutionDate).toLocaleDateString()}
+                                          </Typography>
+                                        )}
                                       </Grid>
-                                      
+
+                                      {/* WMS Manual Risks */}
+                                      {(response.corrosionRisk || response.deadLegsRisk || response.automationLossRisk) && (
+                                        <Grid item xs={12}>
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            <strong>WMS Manual Risks:</strong>
+                                          </Typography>
+                                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                            <Chip label={`Corrosion: ${response.corrosionRisk || 'N/A'}`} size="small" variant="outlined" />
+                                            <Chip label={`Dead Legs: ${response.deadLegsRisk || 'N/A'}`} size="small" variant="outlined" />
+                                            <Chip label={`Automation Loss: ${response.automationLossRisk || 'N/A'}`} size="small" variant="outlined" />
+                                          </Box>
+                                        </Grid>
+                                      )}
+
+                                      {/* Asset Manager Review */}
+                                      {(response.assetManagerReviewRequired === 'Yes' || response.resolutionStrategy) && (
+                                        <Grid item xs={12}>
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            <strong>Asset Manager Review:</strong> {response.assetManagerReviewRequired || 'N/A'}
+                                          </Typography>
+                                          {response.resolutionStrategy && response.resolutionStrategy !== 'N/A' && (
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>Resolution Strategy:</strong> {response.resolutionStrategy}
+                                            </Typography>
+                                          )}
+                                        </Grid>
+                                      )}
+
                                       {comments && (
                                         <Grid item xs={12}>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>
