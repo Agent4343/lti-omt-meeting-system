@@ -78,20 +78,43 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
   const ltiAge = ltiAgeInfo.display;
   const isSixMonthsPlus = ltiAgeInfo.isSixMonthsPlus;
 
+  // Track if data was loaded from previous meeting
+  const [loadedFromPrevious, setLoadedFromPrevious] = useState(false);
+
   // Reset and load data when isolation changes
   useEffect(() => {
     // First reset to defaults
     setFormData(defaultFormData);
+    setLoadedFromPrevious(false);
 
-    // Then load any existing saved data for this isolation
+    // Check for existing data in current meeting first
     const savedResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
     const existingData = savedResponses[isolation?.id];
 
     if (existingData) {
+      // Current meeting has data for this isolation
       setFormData(prev => ({
         ...prev,
         ...existingData
       }));
+    } else {
+      // No current data - try to load from previous meeting
+      const previousResponses = JSON.parse(localStorage.getItem('previousMeetingResponses')) || {};
+      const previousData = previousResponses[isolation?.id];
+
+      if (previousData) {
+        // Load previous meeting data as starting point
+        setFormData(prev => ({
+          ...prev,
+          ...previousData
+        }));
+        setLoadedFromPrevious(true);
+
+        // Auto-save to current meeting so it persists
+        if (onDataChange) {
+          onDataChange(isolation.id, { ...defaultFormData, ...previousData });
+        }
+      }
     }
   }, [isolation?.id]);
 
@@ -156,6 +179,14 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
       {isSixMonthsPlus && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           <strong>6+ Months:</strong> Asset Manager review required per WMS Manual.
+        </Alert>
+      )}
+
+      {/* Previous Meeting Data Indicator */}
+      {loadedFromPrevious && (
+        <Alert severity="info" sx={{ mb: 2 }} icon={<AssignmentIcon />}>
+          <strong>Previous Data Loaded:</strong> Responses from the last meeting have been pre-filled.
+          Review and update only what has changed.
         </Alert>
       )}
 
