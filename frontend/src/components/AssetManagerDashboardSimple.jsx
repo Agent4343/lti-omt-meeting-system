@@ -36,12 +36,15 @@ import {
   GetApp as DownloadIcon,
   Visibility as ViewIcon,
   CalendarToday as CalendarIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  Email as EmailIcon,
+  CloudUpload as CloudUploadIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
 import { exportMeetingToPDF } from '../utils/pdfExport';
 import { calculateLTIAge } from '../utils/dateUtils';
 import { exportAssetManagerToCSV } from '../utils/csvExport';
+import { openEmailClient, generateAssetManagerReportEmail, downloadAsFile } from '../utils/emailUtils';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -493,6 +496,52 @@ const AssetManagerDashboard = () => {
     }
   };
 
+  // Email Asset Manager Report
+  const handleEmailReport = () => {
+    try {
+      const stats = {
+        totalLTIs: dashboardStats.totalLTIs,
+        sixMonthsPlus: dashboardStats.sixMonthsPlus,
+        criticalRisk: dashboardStats.criticalRisk,
+        highRisk: dashboardStats.highRisk,
+        mocRequired: dashboardStats.mocRequired,
+        equipmentIssues: dashboardStats.equipmentIssues,
+        urgentAction: dashboardStats.urgentAction,
+        sixMonthsPlusLTIs: dashboardStats.sixMonthsPlusLTIs
+      };
+      const subject = `Asset Manager LTI Status Report - ${new Date().toLocaleDateString()}`;
+      const body = generateAssetManagerReportEmail(processedLTIData, stats);
+      openEmailClient('', subject, body);
+      alert('Email client opened with Asset Manager report');
+    } catch (error) {
+      console.error('Error generating email:', error);
+      alert('Error generating email. Please try again.');
+    }
+  };
+
+  // Save report to SharePoint (downloads JSON for upload)
+  const handleSaveToSharePoint = () => {
+    try {
+      const reportData = {
+        reportDate: new Date().toISOString(),
+        stats: {
+          totalLTIs: dashboardStats.totalLTIs,
+          sixMonthsPlus: dashboardStats.sixMonthsPlus,
+          criticalRisk: dashboardStats.criticalRisk,
+          highRisk: dashboardStats.highRisk,
+          mocRequired: dashboardStats.mocRequired
+        },
+        ltis: processedLTIData
+      };
+      const filename = `Asset_Manager_Report_${new Date().toISOString().split('T')[0]}.json`;
+      downloadAsFile(JSON.stringify(reportData, null, 2), filename, 'application/json');
+      alert(`File "${filename}" downloaded. Upload it to your SharePoint document library.`);
+    } catch (error) {
+      console.error('Error saving to SharePoint:', error);
+      alert('Error creating file. Please try again.');
+    }
+  };
+
   // Export Meeting Agenda as PDF
   const handleExportAgendaPDF = async () => {
     try {
@@ -631,6 +680,26 @@ const AssetManagerDashboard = () => {
           size="large"
         >
           Export CSV
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<EmailIcon />}
+          onClick={handleEmailReport}
+          color="secondary"
+          size="large"
+        >
+          Email Report
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<CloudUploadIcon />}
+          onClick={handleSaveToSharePoint}
+          color="success"
+          size="large"
+        >
+          Save to SharePoint
         </Button>
       </Box>
 

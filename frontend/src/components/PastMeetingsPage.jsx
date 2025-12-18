@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Accordion, 
-  AccordionSummary, 
-  AccordionDetails, 
-  List, 
-  ListItem, 
-  ListItemText, 
+import {
+  Box,
+  Typography,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemText,
   Button,
   Container,
   Paper,
@@ -47,8 +47,12 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
+import EmailIcon from '@mui/icons-material/Email';
+import SaveIcon from '@mui/icons-material/Save';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import * as XLSX from 'xlsx';
 import { exportMeetingToPDF } from '../utils/pdfExport';
+import { openEmailClient, generateMeetingSummaryEmail, downloadAsFile } from '../utils/emailUtils';
 
 function PastMeetingsPage() {
   const navigate = useNavigate();
@@ -253,6 +257,48 @@ function PastMeetingsPage() {
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  // Email meeting summary
+  const handleEmailMeetingSummary = (meeting) => {
+    try {
+      const subject = `LTI OMT Meeting Summary - ${meeting.date || 'No Date'}`;
+      const body = generateMeetingSummaryEmail(meeting);
+      openEmailClient('', subject, body);
+      setSnackbar({
+        open: true,
+        message: 'Email client opened with meeting summary',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error generating email:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error generating email. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Save meeting to SharePoint (downloads JSON file for upload)
+  const handleSaveToSharePoint = (meeting, index) => {
+    try {
+      const filename = `LTI_Meeting_${meeting.date || 'NoDate'}_${index + 1}.json`;
+      const content = JSON.stringify(meeting, null, 2);
+      downloadAsFile(content, filename, 'application/json');
+      setSnackbar({
+        open: true,
+        message: `File "${filename}" downloaded. Upload it to your SharePoint document library.`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error saving to SharePoint:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error creating file. Please try again.',
+        severity: 'error'
+      });
+    }
   };
 
   // Calculate statistics for a meeting
@@ -1147,17 +1193,35 @@ function PastMeetingsPage() {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Export to PDF">
-                        <IconButton 
-                          color="secondary" 
+                        <IconButton
+                          color="secondary"
                           onClick={() => handleExportMeetingToPDF(meeting, index)}
                           sx={{ mr: 1 }}
                         >
                           <PictureAsPdfIcon />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Email Summary">
+                        <IconButton
+                          color="info"
+                          onClick={() => handleEmailMeetingSummary(meeting)}
+                          sx={{ mr: 1 }}
+                        >
+                          <EmailIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Save to SharePoint">
+                        <IconButton
+                          color="success"
+                          onClick={() => handleSaveToSharePoint(meeting, index)}
+                          sx={{ mr: 1 }}
+                        >
+                          <CloudUploadIcon />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Delete Meeting">
-                        <IconButton 
-                          color="error" 
+                        <IconButton
+                          color="error"
                           onClick={() => confirmDeleteMeeting(index)}
                         >
                           <DeleteIcon />
