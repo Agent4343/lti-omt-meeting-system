@@ -28,6 +28,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import BusinessIcon from '@mui/icons-material/Business';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { APP_NAME, APP_VERSION } from '../config';
 
 function NavigationHeader() {
@@ -37,7 +38,7 @@ function NavigationHeader() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-   const menuItems = [
+  const menuItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/' },
     { text: 'New Meeting', icon: <AddIcon />, path: '/home' },
     { text: 'Manage People', icon: <PeopleIcon />, path: '/people' },
@@ -45,6 +46,7 @@ function NavigationHeader() {
     { text: 'LTI Master List', icon: <ListAltIcon />, path: '/lti-master' },
     { text: 'LTI Dashboard', icon: <DashboardIcon />, path: '/lti-dashboard' },
     { text: 'Asset Manager', icon: <SupervisorAccountIcon />, path: '/asset-manager-dashboard' },
+    { text: 'Removed LTIs', icon: <DeleteSweepIcon />, path: '/removed-ltis' },
     { text: 'Meeting Calendar', icon: <CalendarMonthIcon />, path: '/calendar' },
   ];
 

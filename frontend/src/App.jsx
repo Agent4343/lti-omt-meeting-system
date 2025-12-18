@@ -12,6 +12,7 @@ import MeetingCalendarPage from './components/MeetingCalendarPage';
 import LTIDashboard from './components/LTIDashboard';
 import AssetManagerReviewPage from './components/AssetManagerReviewPage';
 import AssetManagerDashboard from './components/AssetManagerDashboardSimple';
+import RemovedLTIsPage from './components/RemovedLTIsPage';
 import NavigationHeader from './components/NavigationHeader';
 import ErrorBoundary from './components/ErrorBoundary';
 import NotFoundPage from './components/NotFoundPage';
@@ -38,6 +39,7 @@ function App() {
               <Route path="/lti-dashboard" element={<LTIDashboard />} />
               <Route path="/asset-manager-review" element={<AssetManagerReviewPage />} />
               <Route path="/asset-manager-dashboard" element={<AssetManagerDashboard />} />
+              <Route path="/removed-ltis" element={<RemovedLTIsPage />} />
               <Route path="/calendar" element={<MeetingCalendarPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
