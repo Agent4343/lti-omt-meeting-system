@@ -13,10 +13,12 @@ console.log(`Using React v${REACT_VERSION} with ${UI_FRAMEWORK} v${UI_FRAMEWORK_
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <AppContextProvider>
-    <ThemeProvider theme={theme}>
-      <CssBaseline /> {/* Add CssBaseline for baseline styling */}
-      <App />
-    </ThemeProvider>
-  </AppContextProvider>
+  <React.StrictMode>
+    <AppContextProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <App />
+      </ThemeProvider>
+    </AppContextProvider>
+  </React.StrictMode>
 );

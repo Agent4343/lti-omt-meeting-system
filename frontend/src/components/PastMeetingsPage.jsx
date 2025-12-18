@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Accordion, 
-  AccordionSummary, 
-  AccordionDetails, 
-  List, 
-  ListItem, 
-  ListItemText, 
+import {
+  Box,
+  Typography,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemText,
   Button,
   Container,
   Paper,
@@ -47,8 +47,12 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
+import EmailIcon from '@mui/icons-material/Email';
+import SaveIcon from '@mui/icons-material/Save';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import * as XLSX from 'xlsx';
 import { exportMeetingToPDF } from '../utils/pdfExport';
+import { openEmailClient, generateMeetingSummaryEmail, downloadAsFile } from '../utils/emailUtils';
 
 function PastMeetingsPage() {
   const navigate = useNavigate();
@@ -253,6 +257,48 @@ function PastMeetingsPage() {
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  // Email meeting summary
+  const handleEmailMeetingSummary = (meeting) => {
+    try {
+      const subject = `LTI OMT Meeting Summary - ${meeting.date || 'No Date'}`;
+      const body = generateMeetingSummaryEmail(meeting);
+      openEmailClient('', subject, body);
+      setSnackbar({
+        open: true,
+        message: 'Email client opened with meeting summary',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error generating email:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error generating email. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Save meeting to SharePoint (downloads JSON file for upload)
+  const handleSaveToSharePoint = (meeting, index) => {
+    try {
+      const filename = `LTI_Meeting_${meeting.date || 'NoDate'}_${index + 1}.json`;
+      const content = JSON.stringify(meeting, null, 2);
+      downloadAsFile(content, filename, 'application/json');
+      setSnackbar({
+        open: true,
+        message: `File "${filename}" downloaded. Upload it to your SharePoint document library.`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error saving to SharePoint:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error creating file. Please try again.',
+        severity: 'error'
+      });
+    }
   };
 
   // Calculate statistics for a meeting
@@ -944,30 +990,85 @@ function PastMeetingsPage() {
                                           </Alert>
                                         </Grid>
                                       )}
-                                      
+
+                                      {/* Core Assessment */}
                                       <Grid item xs={12} sm={6}>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
                                           <strong>Risk Level:</strong> {riskLevel}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                                          <strong>Duration:</strong> {response.isolationDuration || 'N/A'}
+                                          <strong>Action Required:</strong> {response.actionRequired || 'N/A'}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                                          <strong>Business Impact:</strong> {response.businessImpact || 'N/A'}
-                                        </Typography>
-                                      </Grid>
-                                      <Grid item xs={12} sm={6}>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
                                           <strong>MOC Required:</strong> {response.mocRequired || 'N/A'}
                                         </Typography>
+                                        {response.mocRequired === 'Yes' && (
+                                          <>
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>MOC Number:</strong> {response.mocNumber || 'Not specified'}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>MOC Status:</strong> {response.mocStatus || 'N/A'}
+                                            </Typography>
+                                          </>
+                                        )}
+                                      </Grid>
+
+                                      {/* Parts & Equipment */}
+                                      <Grid item xs={12} sm={6}>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
                                           <strong>Parts Required:</strong> {response.partsRequired || 'N/A'}
                                         </Typography>
+                                        {response.partsRequired === 'Yes' && (
+                                          <>
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>Parts Status:</strong> {response.partsStatus || 'N/A'}
+                                            </Typography>
+                                            {response.partsExpectedDate && (
+                                              <Typography variant="body2" color="text.secondary" gutterBottom>
+                                                <strong>Parts Expected:</strong> {new Date(response.partsExpectedDate).toLocaleDateString()}
+                                              </Typography>
+                                            )}
+                                          </>
+                                        )}
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                                          <strong>Support Required:</strong> {response.supportRequired || 'N/A'}
+                                          <strong>Equipment Disconnection:</strong> {response.equipmentDisconnectionRequired || 'N/A'}
                                         </Typography>
+                                        {response.plannedResolutionDate && (
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            <strong>Planned Resolution:</strong> {new Date(response.plannedResolutionDate).toLocaleDateString()}
+                                          </Typography>
+                                        )}
                                       </Grid>
-                                      
+
+                                      {/* WMS Manual Risks */}
+                                      {(response.corrosionRisk || response.deadLegsRisk || response.automationLossRisk) && (
+                                        <Grid item xs={12}>
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            <strong>WMS Manual Risks:</strong>
+                                          </Typography>
+                                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                            <Chip label={`Corrosion: ${response.corrosionRisk || 'N/A'}`} size="small" variant="outlined" />
+                                            <Chip label={`Dead Legs: ${response.deadLegsRisk || 'N/A'}`} size="small" variant="outlined" />
+                                            <Chip label={`Automation Loss: ${response.automationLossRisk || 'N/A'}`} size="small" variant="outlined" />
+                                          </Box>
+                                        </Grid>
+                                      )}
+
+                                      {/* Asset Manager Review */}
+                                      {(response.assetManagerReviewRequired === 'Yes' || response.resolutionStrategy) && (
+                                        <Grid item xs={12}>
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            <strong>Asset Manager Review:</strong> {response.assetManagerReviewRequired || 'N/A'}
+                                          </Typography>
+                                          {response.resolutionStrategy && response.resolutionStrategy !== 'N/A' && (
+                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                              <strong>Resolution Strategy:</strong> {response.resolutionStrategy}
+                                            </Typography>
+                                          )}
+                                        </Grid>
+                                      )}
+
                                       {comments && (
                                         <Grid item xs={12}>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -1092,17 +1193,35 @@ function PastMeetingsPage() {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Export to PDF">
-                        <IconButton 
-                          color="secondary" 
+                        <IconButton
+                          color="secondary"
                           onClick={() => handleExportMeetingToPDF(meeting, index)}
                           sx={{ mr: 1 }}
                         >
                           <PictureAsPdfIcon />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Email Summary">
+                        <IconButton
+                          color="info"
+                          onClick={() => handleEmailMeetingSummary(meeting)}
+                          sx={{ mr: 1 }}
+                        >
+                          <EmailIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Save to SharePoint">
+                        <IconButton
+                          color="success"
+                          onClick={() => handleSaveToSharePoint(meeting, index)}
+                          sx={{ mr: 1 }}
+                        >
+                          <CloudUploadIcon />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Delete Meeting">
-                        <IconButton 
-                          color="error" 
+                        <IconButton
+                          color="error"
                           onClick={() => confirmDeleteMeeting(index)}
                         >
                           <DeleteIcon />

@@ -1,10 +1,11 @@
 import React from 'react';
-import { 
-  Box, 
-  CircularProgress, 
-  Typography, 
+import PropTypes from 'prop-types';
+import {
+  Box,
+  CircularProgress,
+  Typography,
   Backdrop,
-  Paper 
+  Paper
 } from '@mui/material';
 
 // Full-screen loading overlay
@@ -92,5 +93,25 @@ export const LoadingButton = ({
     )}
   </Box>
 );
+
+LoadingOverlay.propTypes = {
+  open: PropTypes.bool.isRequired,
+  message: PropTypes.string
+};
+
+LoadingSpinner.propTypes = {
+  size: PropTypes.number,
+  message: PropTypes.string,
+  centered: PropTypes.bool,
+  variant: PropTypes.oneOf(['inline', 'card', 'minimal'])
+};
+
+LoadingButton.propTypes = {
+  loading: PropTypes.bool,
+  children: PropTypes.node,
+  loadingText: PropTypes.string,
+  component: PropTypes.elementType,
+  disabled: PropTypes.bool
+};
 
 export default LoadingSpinner;

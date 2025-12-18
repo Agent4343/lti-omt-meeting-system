@@ -349,10 +349,13 @@ function EnhancedMeetingSummary() {
   
   const finalizeMeeting = () => {
     const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
+    const savedIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
     const enhancedMeeting = {
+      id: `meeting-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date: meetingInfo.date,
       attendees: meetingInfo.attendees,
       responses: responses,
+      isolations: savedIsolations,
       timestamp: new Date().toISOString(),
       comprehensiveStats,
       meetingMetrics,

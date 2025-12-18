@@ -36,9 +36,15 @@ import {
   GetApp as DownloadIcon,
   Visibility as ViewIcon,
   CalendarToday as CalendarIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  Email as EmailIcon,
+  CloudUpload as CloudUploadIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
+import { exportMeetingToPDF } from '../utils/pdfExport';
+import { calculateLTIAge } from '../utils/dateUtils';
+import { exportAssetManagerToCSV } from '../utils/csvExport';
+import { openEmailClient, generateAssetManagerReportEmail, downloadAsFile } from '../utils/emailUtils';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -47,52 +53,67 @@ const AssetManagerDashboard = () => {
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
 
-  // Auto-load test data if no data exists
+  // Load data from localStorage - combine savedMeetings AND pastMeetings
   useEffect(() => {
-    const autoLoadTestData = () => {
+    const loadData = () => {
       try {
+        // Read from BOTH sources (finished meetings go to pastMeetings)
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
-        console.log('🔍 Asset Manager Dashboard - localStorage check:', {
-          savedMeetingsCount: savedMeetings.length,
-          contextMeetingsCount: meetings.length,
-          savedMeetings: savedMeetings
+        const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
+
+        // Combine both, avoiding duplicates by meeting id or timestamp
+        const allMeetings = [...savedMeetings];
+        pastMeetings.forEach(pm => {
+          // Use id if available, otherwise use timestamp for deduplication
+          const pmKey = pm.id || pm.timestamp;
+          const isDuplicate = allMeetings.find(m => {
+            const mKey = m.id || m.timestamp;
+            return mKey && pmKey && mKey === pmKey;
+          });
+          if (!isDuplicate) {
+            allMeetings.push(pm);
+          }
         });
-        
+
         // If no data exists, auto-load test data
-        if (savedMeetings.length === 0 && meetings.length === 0) {
-          console.log('🚀 Auto-loading test data for Asset Manager Dashboard...');
+        if (allMeetings.length === 0) {
           loadAssetManagerTestData();
           return;
         }
-        
-        // If localStorage has more meetings than context, use localStorage data
-        if (savedMeetings.length > meetings.length) {
-          console.log('📊 Using localStorage data instead of context');
-          setLocalMeetings(savedMeetings);
-        } else {
-          setLocalMeetings(meetings);
-        }
+
+        setLocalMeetings(allMeetings);
       } catch (error) {
-        console.error('❌ Error reading localStorage:', error);
-        setLocalMeetings(meetings);
+        console.error('Error reading localStorage:', error);
       }
     };
 
-    // Check immediately
-    autoLoadTestData();
+    // Load immediately
+    loadData();
 
-    // Set up interval to check for changes
-    const interval = setInterval(autoLoadTestData, 2000);
+    // Listen for storage events
+    const handleStorageChange = (e) => {
+      if (e.key === 'savedMeetings' || e.key === 'pastMeetings' || e.key === 'currentMeetingResponses') {
+        loadData();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
 
-    return () => clearInterval(interval);
-  }, [meetings]);
+    // Poll for changes within same tab
+    const interval = setInterval(loadData, 3000);
 
-  // Function to load test data automatically
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Function to load test data automatically (only in memory, NOT saved to localStorage)
   const loadAssetManagerTestData = () => {
     try {
-      console.log('🧪 Auto-loading Asset Manager test data...');
-      
+
       // Create meetings with proper isolations and responses structure
+      // NOTE: This is demo data shown only when no real data exists
+      // It is NOT saved to localStorage to avoid mixing with real data
       const meetingsWithAgedLTIs = [
         {
           id: 'meeting-001',
@@ -293,96 +314,39 @@ const AssetManagerDashboard = () => {
         }
       ];
 
-      // Save meetings to localStorage
-      localStorage.setItem('savedMeetings', JSON.stringify(meetingsWithAgedLTIs));
+      // DO NOT save test data to localStorage - only show in memory
+      // This prevents test data from mixing with real user data
 
-      // Also save to currentMeetingIsolations for compatibility
-      const allIsolations = [];
-      meetingsWithAgedLTIs.forEach(meeting => {
-        if (meeting.isolations) {
-          allIsolations.push(...meeting.isolations);
-        }
-      });
-      localStorage.setItem('currentMeetingIsolations', JSON.stringify(allIsolations));
-
-      // Update local state immediately
+      // Update local state immediately (demo data only)
       setLocalMeetings(meetingsWithAgedLTIs);
-      
-      console.log('✅ Asset Manager Test Data Auto-loaded Successfully!');
-      console.log('📊 Dashboard should now show: Total LTIs: 6, 6+ Months Old: 6, MOCs Required: 5');
-
     } catch (error) {
-      console.error('❌ Error auto-loading test data:', error);
-    }
-  };
-
-  // Debug log whenever meetings change
-  useEffect(() => {
-    console.log('🔄 Asset Manager Dashboard - meetings updated:', {
-      contextMeetings: meetings.length,
-      localMeetings: localMeetings.length
-    });
-  }, [meetings, localMeetings]);
-
-  // Calculate LTI age in days from planned start date
-  const calculateLTIAge = (plannedStartDate) => {
-    if (!plannedStartDate) return { days: 0, display: 'Unknown', isSixMonthsPlus: false };
-    
-    try {
-      const startDate = new Date(plannedStartDate);
-      const currentDate = new Date();
-      const diffTime = Math.abs(currentDate - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      const isSixMonthsPlus = diffDays >= 183; // 6 months = ~183 days
-      
-      let display = '';
-      if (diffDays < 30) {
-        display = `${diffDays} days`;
-      } else if (diffDays < 365) {
-        const months = Math.floor(diffDays / 30);
-        display = `${months} months`;
-      } else {
-        const years = Math.floor(diffDays / 365);
-        const months = Math.floor((diffDays % 365) / 30);
-        display = `${years} year${years > 1 ? 's' : ''}${months > 0 ? ` ${months} months` : ''}`;
-      }
-      
-      return { days: diffDays, display, isSixMonthsPlus };
-    } catch (error) {
-      return { days: 0, display: 'Invalid Date', isSixMonthsPlus: false };
+      console.error('Error auto-loading test data:', error);
     }
   };
 
   // Process all LTI data from meetings - use localMeetings instead of meetings
+  // Deduplicate by isolation ID, keeping the most recent meeting's data
   const processedLTIData = useMemo(() => {
-    const allLTIs = [];
-    
-    console.log('🔍 Processing LTI Data - localMeetings:', localMeetings);
-    
-    localMeetings.forEach(meeting => {
-      console.log('📋 Processing meeting:', meeting.id, meeting.date);
-      console.log('   - Has isolations:', !!meeting.isolations, meeting.isolations?.length || 0);
-      console.log('   - Has responses:', !!meeting.responses, Object.keys(meeting.responses || {}).length);
-      
+    const ltiMap = new Map(); // Use Map to track unique LTIs by ID
+
+    // Sort meetings by date (oldest first) so newer data overwrites older
+    const sortedMeetings = [...localMeetings].sort((a, b) =>
+      new Date(a.date || 0) - new Date(b.date || 0)
+    );
+
+    sortedMeetings.forEach(meeting => {
       if (meeting.isolations && meeting.responses) {
         meeting.isolations.forEach(isolation => {
           const response = meeting.responses[isolation.id] || {};
           const ageInfo = calculateLTIAge(isolation['Planned Start Date'] || isolation.plannedStartDate);
-          
-          console.log(`   - Processing LTI ${isolation.id}:`, {
-            plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
-            ageInfo: ageInfo,
-            hasResponse: !!response.riskLevel
-          });
-          
+
           const ltiData = {
             id: isolation.id,
             description: isolation.description || isolation.Title || 'No description',
             plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
             ageInfo: ageInfo,
             meetingDate: meeting.date,
-            
+
             // Assessment data
             riskLevel: response.riskLevel || 'N/A',
             businessImpact: response.businessImpact || 'N/A',
@@ -398,22 +362,21 @@ const AssetManagerDashboard = () => {
             actionRequired: response.actionRequired || 'N/A',
             actionItems: response.actionItems || [],
             comments: response.comments || '',
-            
+
             // WMS Manual risks
             corrosionRisk: response.corrosionRisk || 'N/A',
             deadLegsRisk: response.deadLegsRisk || 'N/A',
             automationLossRisk: response.automationLossRisk || 'N/A'
           };
-          
-          allLTIs.push(ltiData);
+
+          // Store by ID - newer meetings will overwrite older ones
+          ltiMap.set(isolation.id, ltiData);
         });
-      } else {
-        console.log('   ⚠️ Meeting missing isolations or responses');
       }
     });
-    
-    console.log('🎯 Final processed LTIs:', allLTIs.length, allLTIs);
-    return allLTIs;
+
+    // Convert Map values back to array
+    return Array.from(ltiMap.values());
   }, [localMeetings]);
 
   // Calculate dashboard statistics
@@ -466,15 +429,169 @@ const AssetManagerDashboard = () => {
     setAgendaDialogOpen(true);
   };
 
+  // Export Asset Manager Report as PDF
+  const handleExportReport = async () => {
+    try {
+      const reportData = {
+        date: new Date().toISOString().split('T')[0],
+        attendees: ['Asset Manager', 'OMT Team'],
+        isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
+          id: lti.id,
+          description: lti.description,
+          'Planned Start Date': lti.plannedStartDate
+        })),
+        responses: dashboardStats.sixMonthsPlusLTIs.reduce((acc, lti) => {
+          acc[lti.id] = {
+            riskLevel: lti.riskLevel,
+            mocRequired: lti.mocRequired,
+            mocNumber: lti.mocNumber,
+            partsRequired: lti.partsRequired,
+            actionRequired: lti.actionRequired,
+            comments: `Age: ${lti.ageInfo.display}. ${lti.comments || 'Asset Manager Review Required.'}`
+          };
+          return acc;
+        }, {}),
+        meetingData: {
+          executiveSummary: {
+            totalIsolationsReviewed: dashboardStats.sixMonthsPlus,
+            criticalFindings: dashboardStats.criticalRisk + dashboardStats.highRisk,
+            actionItemsGenerated: dashboardStats.mocRequired,
+            relatedIsolationWarnings: []
+          },
+          riskAnalysis: {
+            distribution: {
+              Critical: { count: dashboardStats.criticalRisk },
+              High: { count: dashboardStats.highRisk },
+              Medium: { count: processedLTIData.filter(lti => lti.riskLevel === 'Medium').length },
+              Low: { count: processedLTIData.filter(lti => lti.riskLevel === 'Low').length }
+            }
+          }
+        }
+      };
+
+      const result = await exportMeetingToPDF(reportData);
+      if (result.success) {
+        alert('Asset Manager Report exported successfully!');
+      } else {
+        alert(`Error exporting report: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting Asset Manager Report:', error);
+      alert('Error exporting report. Please try again.');
+    }
+  };
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    try {
+      const result = exportAssetManagerToCSV(processedLTIData, 'all');
+      if (result.success) {
+        alert('CSV exported successfully!');
+      } else {
+        alert(`Error exporting CSV: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Error exporting CSV. Please try again.');
+    }
+  };
+
+  // Email Asset Manager Report
+  const handleEmailReport = () => {
+    try {
+      const stats = {
+        totalLTIs: dashboardStats.totalLTIs,
+        sixMonthsPlus: dashboardStats.sixMonthsPlus,
+        criticalRisk: dashboardStats.criticalRisk,
+        highRisk: dashboardStats.highRisk,
+        mocRequired: dashboardStats.mocRequired,
+        equipmentIssues: dashboardStats.equipmentIssues,
+        urgentAction: dashboardStats.urgentAction,
+        sixMonthsPlusLTIs: dashboardStats.sixMonthsPlusLTIs
+      };
+      const subject = `Asset Manager LTI Status Report - ${new Date().toLocaleDateString()}`;
+      const body = generateAssetManagerReportEmail(processedLTIData, stats);
+      openEmailClient('', subject, body);
+      alert('Email client opened with Asset Manager report');
+    } catch (error) {
+      console.error('Error generating email:', error);
+      alert('Error generating email. Please try again.');
+    }
+  };
+
+  // Save report to SharePoint (downloads JSON for upload)
+  const handleSaveToSharePoint = () => {
+    try {
+      const reportData = {
+        reportDate: new Date().toISOString(),
+        stats: {
+          totalLTIs: dashboardStats.totalLTIs,
+          sixMonthsPlus: dashboardStats.sixMonthsPlus,
+          criticalRisk: dashboardStats.criticalRisk,
+          highRisk: dashboardStats.highRisk,
+          mocRequired: dashboardStats.mocRequired
+        },
+        ltis: processedLTIData
+      };
+      const filename = `Asset_Manager_Report_${new Date().toISOString().split('T')[0]}.json`;
+      downloadAsFile(JSON.stringify(reportData, null, 2), filename, 'application/json');
+      alert(`File "${filename}" downloaded. Upload it to your SharePoint document library.`);
+    } catch (error) {
+      console.error('Error saving to SharePoint:', error);
+      alert('Error creating file. Please try again.');
+    }
+  };
+
+  // Export Meeting Agenda as PDF
+  const handleExportAgendaPDF = async () => {
+    try {
+      const agendaData = {
+        date: new Date().toISOString().split('T')[0],
+        attendees: ['Asset Manager', 'OMT Team', 'Operations Manager'],
+        isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
+          id: lti.id,
+          description: lti.description,
+          'Planned Start Date': lti.plannedStartDate
+        })),
+        responses: dashboardStats.sixMonthsPlusLTIs.reduce((acc, lti) => {
+          acc[lti.id] = {
+            riskLevel: lti.riskLevel,
+            mocRequired: lti.mocRequired,
+            comments: `Meeting Agenda Item - ${lti.ageInfo.display} old, ${lti.riskLevel} risk`
+          };
+          return acc;
+        }, {}),
+        meetingData: {
+          executiveSummary: {
+            totalIsolationsReviewed: dashboardStats.totalLTIs,
+            criticalFindings: dashboardStats.criticalRisk + dashboardStats.highRisk,
+            actionItemsGenerated: dashboardStats.urgentAction,
+            relatedIsolationWarnings: []
+          }
+        }
+      };
+
+      const result = await exportMeetingToPDF(agendaData);
+      if (result.success) {
+        alert('Meeting Agenda exported successfully!');
+        setAgendaDialogOpen(false);
+      } else {
+        alert(`Error exporting agenda: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting Meeting Agenda:', error);
+      alert('Error exporting agenda. Please try again.');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      {/* Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <strong>Debug:</strong> Context meetings: {meetings.length}, Local meetings: {localMeetings.length}, 
-          Total LTIs: {dashboardStats.totalLTIs}, 6+ months: {dashboardStats.sixMonthsPlus}
-        </Alert>
-      )}
+      {/* Debug Info - Always show to help diagnose count issues */}
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <strong>Data Sources:</strong> {localMeetings.length} meetings loaded |
+        Unique LTI IDs: {processedLTIData.length} |
+        Raw isolation count: {localMeetings.reduce((acc, m) => acc + (m.isolations?.length || 0), 0)}
+      </Alert>
 
       {/* Page Header */}
       <Box sx={{ mb: 4 }}>
@@ -548,10 +665,41 @@ const AssetManagerDashboard = () => {
         <Button
           variant="outlined"
           startIcon={<DownloadIcon />}
+          onClick={handleExportReport}
           color="secondary"
           size="large"
         >
-          Export Asset Manager Report
+          Export PDF
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportCSV}
+          color="info"
+          size="large"
+        >
+          Export CSV
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<EmailIcon />}
+          onClick={handleEmailReport}
+          color="secondary"
+          size="large"
+        >
+          Email Report
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<CloudUploadIcon />}
+          onClick={handleSaveToSharePoint}
+          color="success"
+          size="large"
+        >
+          Save to SharePoint
         </Button>
       </Box>
 
@@ -894,7 +1042,7 @@ const AssetManagerDashboard = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAgendaDialogOpen(false)}>Close</Button>
-          <Button variant="contained" startIcon={<DownloadIcon />}>
+          <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleExportAgendaPDF}>
             Export Agenda PDF
           </Button>
         </DialogActions>

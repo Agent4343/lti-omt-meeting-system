@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -53,26 +53,13 @@ function AssetManagerReviewPage() {
 
   const [filterPeriod, setFilterPeriod] = useState('6-months');
 
-  useEffect(() => {
-    // Load meeting data and filter for Asset Manager review
-    loadAssetManagerReviewData();
-  }, [filterPeriod]);
-
-  const loadAssetManagerReviewData = () => {
+  const loadAssetManagerReviewData = useCallback(() => {
     try {
-      console.log('Loading Asset Manager review data...');
-      
       // Get all meetings from localStorage - check multiple possible keys
       const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
-      const allMeetings = JSON.parse(localStorage.getItem('allMeetings')) || [];
       const currentMeetingIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
       const currentMeetingResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
-      
-      console.log('Found saved meetings:', savedMeetings.length);
-      console.log('Found current meeting isolations:', currentMeetingIsolations.length);
-      console.log('Sample saved meeting:', savedMeetings[0]);
-      console.log('Sample current isolation:', currentMeetingIsolations[0]);
-      
+
       let isolationsOver6Months = [];
       let isolationsRemoved = [];
       let mocRequired = [];
@@ -80,40 +67,26 @@ function AssetManagerReviewPage() {
 
       // Process current meeting isolations first
       if (currentMeetingIsolations.length > 0) {
-        console.log('Processing current meeting isolations...');
-        
-        currentMeetingIsolations.forEach((isolation, isolationIndex) => {
-          console.log(`Processing current isolation ${isolationIndex + 1}:`, isolation.id);
-          
+        currentMeetingIsolations.forEach((isolation) => {
           // Try multiple date field variations
-          const plannedStartDateStr = isolation['Planned Start Date'] || 
-                                    isolation.plannedStartDate || 
+          const plannedStartDateStr = isolation['Planned Start Date'] ||
+                                    isolation.plannedStartDate ||
                                     isolation.PlannedStartDate ||
                                     isolation['planned_start_date'] ||
                                     isolation.startDate;
-          
-          if (!plannedStartDateStr) {
-            console.log(`No planned start date found for isolation ${isolation.id}`);
-            return;
-          }
-          
+
+          if (!plannedStartDateStr) return;
+
           const plannedStartDate = new Date(plannedStartDateStr);
-          if (isNaN(plannedStartDate.getTime())) {
-            console.log(`Invalid date for isolation ${isolation.id}:`, plannedStartDateStr);
-            return;
-          }
-          
+          if (isNaN(plannedStartDate.getTime())) return;
+
           const ageInMonths = (new Date() - plannedStartDate) / (1000 * 60 * 60 * 24 * 30);
-          console.log(`Current isolation ${isolation.id} age: ${ageInMonths.toFixed(1)} months`);
-          
+
           // Get response data for this isolation from current meeting responses
           const response = currentMeetingResponses[isolation.id] || {};
-          console.log(`Current response data for ${isolation.id}:`, response);
-          
+
           // Check if isolation is over 6 months
           if (ageInMonths >= 6) {
-            console.log(`✅ Current isolation ${isolation.id} is over 6 months (${ageInMonths.toFixed(1)} months)`);
-            
             const isolationData = {
               id: isolation.id,
               description: isolation.description || isolation.Title || isolation.title || 'No description',
@@ -146,13 +119,11 @@ function AssetManagerReviewPage() {
       }
 
       // Process saved meetings
-      savedMeetings.forEach((meeting, meetingIndex) => {
-        console.log(`Processing saved meeting ${meetingIndex + 1}:`, meeting.date);
-        
+      savedMeetings.forEach((meeting) => {
         // Check if meeting has isolations in the expected format
         let meetingIsolations = [];
         let meetingResponses = {};
-        
+
         if (meeting.isolations && Array.isArray(meeting.isolations)) {
           meetingIsolations = meeting.isolations;
           meetingResponses = meeting.responses || {};
@@ -164,41 +135,27 @@ function AssetManagerReviewPage() {
           meetingResponses = meeting.responses;
           meetingIsolations = Object.keys(meetingResponses).map(id => ({ id }));
         }
-        
-        console.log(`Found ${meetingIsolations.length} isolations in saved meeting ${meetingIndex + 1}`);
-        
-        meetingIsolations.forEach((isolation, isolationIndex) => {
-          console.log(`Processing saved isolation ${isolationIndex + 1}:`, isolation.id);
-          
+
+        meetingIsolations.forEach((isolation) => {
           // Try multiple date field variations
-          const plannedStartDateStr = isolation['Planned Start Date'] || 
-                                    isolation.plannedStartDate || 
+          const plannedStartDateStr = isolation['Planned Start Date'] ||
+                                    isolation.plannedStartDate ||
                                     isolation.PlannedStartDate ||
                                     isolation['planned_start_date'] ||
                                     isolation.startDate;
-          
-          if (!plannedStartDateStr) {
-            console.log(`No planned start date found for saved isolation ${isolation.id}`);
-            return;
-          }
-          
+
+          if (!plannedStartDateStr) return;
+
           const plannedStartDate = new Date(plannedStartDateStr);
-          if (isNaN(plannedStartDate.getTime())) {
-            console.log(`Invalid date for saved isolation ${isolation.id}:`, plannedStartDateStr);
-            return;
-          }
-          
+          if (isNaN(plannedStartDate.getTime())) return;
+
           const ageInMonths = (new Date() - plannedStartDate) / (1000 * 60 * 60 * 24 * 30);
-          console.log(`Saved isolation ${isolation.id} age: ${ageInMonths.toFixed(1)} months`);
-          
+
           // Get response data for this isolation
           const response = meetingResponses[isolation.id] || {};
-          console.log(`Saved response data for ${isolation.id}:`, response);
-          
+
           // Check if isolation is over 6 months and not already added from current meeting
           if (ageInMonths >= 6 && !isolationsOver6Months.find(iso => iso.id === isolation.id)) {
-            console.log(`✅ Saved isolation ${isolation.id} is over 6 months (${ageInMonths.toFixed(1)} months)`);
-            
             const isolationData = {
               id: isolation.id,
               description: isolation.description || isolation.Title || isolation.title || 'No description',
@@ -229,7 +186,7 @@ function AssetManagerReviewPage() {
           }
 
           // Check if isolation has been removed
-          if (response.status === 'Completed' || response.status === 'Removed' || 
+          if (response.status === 'Completed' || response.status === 'Removed' ||
               isolation.status === 'Completed' || isolation.status === 'Removed') {
             isolationsRemoved.push({
               id: isolation.id,
@@ -250,12 +207,6 @@ function AssetManagerReviewPage() {
         });
       });
 
-      console.log('Final results:');
-      console.log('- Isolations over 6 months:', isolationsOver6Months.length);
-      console.log('- Isolations removed:', isolationsRemoved.length);
-      console.log('- MOC required:', mocRequired.length);
-      console.log('- Risk summary:', riskSummary);
-
       setReviewData({
         reviewDate: new Date().toISOString().split('T')[0],
         reviewPeriod: filterPeriod,
@@ -268,7 +219,12 @@ function AssetManagerReviewPage() {
     } catch (error) {
       console.error('Error loading Asset Manager review data:', error);
     }
-  };
+  }, [filterPeriod]);
+
+  // Load data when filter period changes
+  useEffect(() => {
+    loadAssetManagerReviewData();
+  }, [loadAssetManagerReviewData]);
 
   const handleExportPDF = async () => {
     try {

@@ -1,12 +1,13 @@
 import React from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Paper, 
+import PropTypes from 'prop-types';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
   Container,
   Alert,
-  AlertTitle 
+  AlertTitle
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import BugReportIcon from '@mui/icons-material/BugReport';
@@ -145,5 +146,9 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+ErrorBoundary.propTypes = {
+  children: PropTypes.node.isRequired
+};
 
 export default ErrorBoundary;
