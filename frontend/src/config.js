@@ -33,9 +33,43 @@ export const FEATURE_FLAGS = {
 
 // SharePoint configuration
 export const SHAREPOINT_CONFIG = {
+  // Enable SharePoint integration
   IS_SHAREPOINT_MODE: process.env.REACT_APP_SHAREPOINT_MODE === 'true',
   TENANT: process.env.REACT_APP_SHAREPOINT_TENANT || '',
-  SITE_URL: process.env.REACT_APP_SHAREPOINT_SITE_URL || ''
+  SITE_URL: process.env.REACT_APP_SHAREPOINT_SITE_URL || '',
+
+  // SharePoint version (2013, 2016, 2019, Online)
+  VERSION: process.env.REACT_APP_SHAREPOINT_VERSION || '2013',
+
+  // SharePoint 2013 specific settings
+  SP2013: {
+    // Use verbose OData format (required for SP 2013)
+    ODATA_FORMAT: 'verbose',
+    // REST API timeout in milliseconds
+    API_TIMEOUT: parseInt(process.env.REACT_APP_SP_API_TIMEOUT) || 30000,
+    // Batch size for bulk operations (SP 2013 has limited batch support)
+    BATCH_SIZE: parseInt(process.env.REACT_APP_SP_BATCH_SIZE) || 10,
+    // Enable IE compatibility polyfills
+    ENABLE_IE_POLYFILLS: process.env.REACT_APP_SP_ENABLE_IE_POLYFILLS !== 'false'
+  },
+
+  // SharePoint List names (can be customized)
+  LISTS: {
+    MEETINGS: process.env.REACT_APP_SP_LIST_MEETINGS || 'Meetings',
+    ISOLATIONS: process.env.REACT_APP_SP_LIST_ISOLATIONS || 'Isolations',
+    ATTENDEES: process.env.REACT_APP_SP_LIST_ATTENDEES || 'Attendees',
+    ACTION_ITEMS: process.env.REACT_APP_SP_LIST_ACTION_ITEMS || 'Action Items'
+  },
+
+  // Data sync settings
+  SYNC: {
+    // Auto-sync interval in milliseconds (0 = disabled)
+    AUTO_SYNC_INTERVAL: parseInt(process.env.REACT_APP_SP_AUTO_SYNC_INTERVAL) || 0,
+    // Sync on app startup
+    SYNC_ON_STARTUP: process.env.REACT_APP_SP_SYNC_ON_STARTUP === 'true',
+    // Show sync status in UI
+    SHOW_SYNC_STATUS: process.env.REACT_APP_SP_SHOW_SYNC_STATUS !== 'false'
+  }
 };
 
 // File configuration
