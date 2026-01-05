@@ -8,19 +8,22 @@
  * - Not accessible from different computers
  *
  * Architecture:
- * - SharePoint Lists: Primary storage (shared across all users)
+ * - SharePoint Document Library: Primary storage (JSON files, shared across all users)
  * - localStorage: Cache/fallback for offline access and performance
  *
- * @version 1.0.0
+ * Storage Mode: Document Library (simpler than Lists - no columns to configure!)
+ *
+ * @version 2.0.0
  */
 
-import sharePoint2013DataService from './sharepoint2013-data-service';
+import sharePointDocumentStorage from './sharepoint-document-storage';
 import { APP_CONFIG } from '../utils/constants';
 
 class HybridStorageProvider {
   constructor() {
-    this.isSharePointAvailable = sharePoint2013DataService.isAvailable();
+    this.isSharePointAvailable = sharePointDocumentStorage.isAvailable();
     this.useSharePointPrimary = true;
+    this.storageService = sharePointDocumentStorage;
     this.syncStatus = {
       lastSync: null,
       pendingChanges: [],
@@ -60,9 +63,17 @@ class HybridStorageProvider {
    */
   getStorageMode() {
     if (this.isSharePointEnabled()) {
-      return 'SharePoint (Centralized) with localStorage cache';
+      return 'SharePoint Document Library (Centralized) with localStorage cache';
     }
     return 'localStorage only (Data not shared between users)';
+  }
+
+  /**
+   * Set the SharePoint document library name
+   * @param {string} libraryName
+   */
+  setLibraryName(libraryName) {
+    this.storageService.setLibraryName(libraryName);
   }
 
   // ========================================
@@ -76,7 +87,7 @@ class HybridStorageProvider {
   async getMeetings() {
     if (this.isSharePointEnabled()) {
       try {
-        const meetings = await sharePoint2013DataService.getMeetings();
+        const meetings = await this.storageService.getMeetings();
         // Update localStorage cache
         this._setLocalStorage('savedMeetings', meetings);
         return meetings;
@@ -107,24 +118,16 @@ class HybridStorageProvider {
     localMeetings.push(meetingData);
     this._setLocalStorage('savedMeetings', localMeetings);
 
-    // Sync to SharePoint if available
+    // Sync to SharePoint Document Library if available
     if (this.isSharePointEnabled()) {
       try {
-        const result = await sharePoint2013DataService.saveMeeting(meetingData);
+        // Save all meetings to the JSON file
+        const result = await this.storageService.saveMeetings(localMeetings);
         if (result.success) {
-          // Update local copy with SharePoint ID
-          const index = localMeetings.findIndex(m =>
-            m.timestamp === meetingData.timestamp
-          );
-          if (index !== -1) {
-            localMeetings[index].sharePointId = result.id;
-            this._setLocalStorage('savedMeetings', localMeetings);
-          }
           return {
             success: true,
-            id: result.id,
-            savedTo: 'SharePoint',
-            data: result.data
+            savedTo: 'SharePoint Document Library',
+            data: meetingData
           };
         } else {
           // Mark as pending sync
@@ -156,7 +159,7 @@ class HybridStorageProvider {
 
   /**
    * Update a meeting
-   * @param {string|number} meetingId - Meeting identifier
+   * @param {string|number} meetingId - Meeting identifier (timestamp or id)
    * @param {Object} meetingData - Updated meeting data
    * @returns {Promise<Object>}
    */
@@ -164,7 +167,7 @@ class HybridStorageProvider {
     // Update localStorage
     const localMeetings = this._getLocalStorage('savedMeetings', []);
     const index = localMeetings.findIndex(m =>
-      m.sharePointId === meetingId || m.id === meetingId || m.timestamp === meetingId
+      m.id === meetingId || m.timestamp === meetingId
     );
 
     if (index !== -1) {
@@ -172,13 +175,14 @@ class HybridStorageProvider {
       this._setLocalStorage('savedMeetings', localMeetings);
     }
 
-    // Sync to SharePoint if available
-    if (this.isSharePointEnabled() && typeof meetingId === 'number') {
+    // Sync to SharePoint Document Library if available
+    if (this.isSharePointEnabled()) {
       try {
-        const result = await sharePoint2013DataService.updateMeeting(meetingId, meetingData);
+        // Save entire meetings array to JSON file
+        const result = await this.storageService.saveMeetings(localMeetings);
         return {
           success: result.success,
-          savedTo: 'SharePoint',
+          savedTo: 'SharePoint Document Library',
           error: result.error
         };
       } catch (error) {
@@ -197,24 +201,25 @@ class HybridStorageProvider {
 
   /**
    * Delete a meeting
-   * @param {string|number} meetingId - Meeting identifier
+   * @param {string|number} meetingId - Meeting identifier (timestamp or id)
    * @returns {Promise<Object>}
    */
   async deleteMeeting(meetingId) {
     // Remove from localStorage
     const localMeetings = this._getLocalStorage('savedMeetings', []);
     const filtered = localMeetings.filter(m =>
-      m.sharePointId !== meetingId && m.id !== meetingId && m.timestamp !== meetingId
+      m.id !== meetingId && m.timestamp !== meetingId
     );
     this._setLocalStorage('savedMeetings', filtered);
 
-    // Delete from SharePoint if available
-    if (this.isSharePointEnabled() && typeof meetingId === 'number') {
+    // Save updated list to SharePoint Document Library if available
+    if (this.isSharePointEnabled()) {
       try {
-        const result = await sharePoint2013DataService.deleteMeeting(meetingId);
+        // Save the filtered meetings array (without deleted meeting)
+        const result = await this.storageService.saveMeetings(filtered);
         return {
           success: result.success,
-          deletedFrom: 'SharePoint',
+          deletedFrom: 'SharePoint Document Library',
           error: result.error
         };
       } catch (error) {
@@ -242,7 +247,8 @@ class HybridStorageProvider {
   async getPeople() {
     if (this.isSharePointEnabled()) {
       try {
-        const people = await sharePoint2013DataService.getAttendees();
+        const people = await this.storageService.getAttendees();
+        // Update localStorage cache
         this._setLocalStorage('savedPeople', people);
         return people;
       } catch (error) {
@@ -279,24 +285,16 @@ class HybridStorageProvider {
       this._setLocalStorage('savedPeople', localPeople);
     }
 
-    // Sync to SharePoint
+    // Sync to SharePoint Document Library
     if (this.isSharePointEnabled() && !exists) {
       try {
-        const result = await sharePoint2013DataService.addAttendee(person);
+        // Save all attendees to the JSON file
+        const result = await this.storageService.saveAttendees(localPeople);
         if (result.success) {
-          // Update local copy with SharePoint ID
-          const index = localPeople.findIndex(p =>
-            (typeof p === 'object' && p.name === person.name)
-          );
-          if (index !== -1) {
-            localPeople[index].sharePointId = result.id;
-            this._setLocalStorage('savedPeople', localPeople);
-          }
           return {
             success: true,
-            id: result.id,
-            savedTo: 'SharePoint',
-            data: result.data
+            savedTo: 'SharePoint Document Library',
+            data: person
           };
         }
       } catch (error) {
@@ -319,7 +317,7 @@ class HybridStorageProvider {
 
   /**
    * Remove a person/attendee
-   * @param {string|number} personId - Person identifier (name or SharePoint ID)
+   * @param {string} personId - Person identifier (name)
    * @returns {Promise<Object>}
    */
   async removePerson(personId) {
@@ -327,17 +325,18 @@ class HybridStorageProvider {
     const localPeople = this._getLocalStorage('savedPeople', []);
     const filtered = localPeople.filter(p =>
       (typeof p === 'string' && p !== personId) ||
-      (typeof p === 'object' && p.name !== personId && p.sharePointId !== personId)
+      (typeof p === 'object' && p.name !== personId)
     );
     this._setLocalStorage('savedPeople', filtered);
 
-    // Deactivate in SharePoint
-    if (this.isSharePointEnabled() && typeof personId === 'number') {
+    // Save updated list to SharePoint Document Library
+    if (this.isSharePointEnabled()) {
       try {
-        const result = await sharePoint2013DataService.deactivateAttendee(personId);
+        // Save the filtered attendees array (without removed person)
+        const result = await this.storageService.saveAttendees(filtered);
         return {
           success: result.success,
-          removedFrom: 'SharePoint'
+          removedFrom: 'SharePoint Document Library'
         };
       } catch (error) {
         this._addPendingChange('attendee', 'delete', { id: personId });
@@ -358,16 +357,14 @@ class HybridStorageProvider {
 
   /**
    * Get isolations
-   * @param {number} meetingId - Optional meeting ID filter
    * @returns {Promise<Array>}
    */
-  async getIsolations(meetingId = null) {
+  async getIsolations() {
     if (this.isSharePointEnabled()) {
       try {
-        const isolations = await sharePoint2013DataService.getIsolations(meetingId);
+        const isolations = await this.storageService.getIsolations();
         // Cache locally
-        const cacheKey = meetingId ? `isolations_${meetingId}` : 'currentMeetingIsolations';
-        this._setLocalStorage(cacheKey, isolations);
+        this._setLocalStorage('currentMeetingIsolations', isolations);
         return isolations;
       } catch (error) {
         console.warn('SharePoint unavailable, using localStorage cache:', error.message);
@@ -380,30 +377,24 @@ class HybridStorageProvider {
   /**
    * Save isolations for a meeting
    * @param {Array} isolations - Array of isolation data
-   * @param {number} meetingId - Meeting ID
    * @returns {Promise<Object>}
    */
-  async saveIsolations(isolations, meetingId) {
+  async saveIsolations(isolations) {
     // Save to localStorage
     this._setLocalStorage('currentMeetingIsolations', isolations);
 
-    // Sync to SharePoint
-    if (this.isSharePointEnabled() && meetingId) {
+    // Sync to SharePoint Document Library
+    if (this.isSharePointEnabled()) {
       try {
-        const results = await sharePoint2013DataService.saveIsolationsBatch(isolations, meetingId);
-        const successful = results.filter(r => r.success).length;
-        const failed = results.filter(r => !r.success).length;
-
+        const result = await this.storageService.saveIsolations(isolations);
         return {
-          success: failed === 0,
-          savedTo: 'SharePoint',
-          successful,
-          failed,
-          results
+          success: result.success,
+          savedTo: 'SharePoint Document Library',
+          error: result.error
         };
       } catch (error) {
         console.warn('Failed to save isolations to SharePoint:', error.message);
-        this._addPendingChange('isolations', 'create', { isolations, meetingId });
+        this._addPendingChange('isolations', 'create', { isolations });
         return {
           success: true,
           savedTo: 'localStorage',
@@ -421,18 +412,41 @@ class HybridStorageProvider {
 
   /**
    * Get current meeting info
-   * @returns {Object|null}
+   * @returns {Promise<Object|null>}
    */
-  getCurrentMeeting() {
+  async getCurrentMeeting() {
+    if (this.isSharePointEnabled()) {
+      try {
+        const meeting = await this.storageService.getCurrentMeeting();
+        if (meeting) {
+          this._setLocalStorage('currentMeetingInfo', meeting);
+        }
+        return meeting;
+      } catch (error) {
+        console.warn('SharePoint unavailable, using localStorage cache:', error.message);
+      }
+    }
     return this._getLocalStorage('currentMeetingInfo', null);
   }
 
   /**
    * Set current meeting info
    * @param {Object} meetingInfo - Current meeting data
+   * @returns {Promise<Object>}
    */
-  setCurrentMeeting(meetingInfo) {
+  async setCurrentMeeting(meetingInfo) {
     this._setLocalStorage('currentMeetingInfo', meetingInfo);
+
+    if (this.isSharePointEnabled()) {
+      try {
+        const result = await this.storageService.saveCurrentMeeting(meetingInfo);
+        return { success: result.success, savedTo: 'SharePoint Document Library' };
+      } catch (error) {
+        console.warn('Failed to save current meeting to SharePoint:', error.message);
+        return { success: true, savedTo: 'localStorage', pendingSync: true };
+      }
+    }
+    return { success: true, savedTo: 'localStorage' };
   }
 
   /**
@@ -451,9 +465,20 @@ class HybridStorageProvider {
 
   /**
    * Get meeting responses
-   * @returns {Object}
+   * @returns {Promise<Object>}
    */
-  getResponses() {
+  async getResponses() {
+    if (this.isSharePointEnabled()) {
+      try {
+        const responses = await this.storageService.getResponses();
+        if (responses && Object.keys(responses).length > 0) {
+          this._setLocalStorage('currentMeetingResponses', responses);
+        }
+        return responses;
+      } catch (error) {
+        console.warn('SharePoint unavailable, using localStorage cache:', error.message);
+      }
+    }
     return this._getLocalStorage('currentMeetingResponses', {});
   }
 
@@ -461,14 +486,26 @@ class HybridStorageProvider {
    * Save response for an isolation
    * @param {string} isolationId - Isolation identifier
    * @param {Object} responseData - Response data
+   * @returns {Promise<Object>}
    */
-  saveResponse(isolationId, responseData) {
-    const responses = this.getResponses();
+  async saveResponse(isolationId, responseData) {
+    const responses = this._getLocalStorage('currentMeetingResponses', {});
     responses[isolationId] = {
       ...responseData,
       timestamp: new Date().toISOString()
     };
     this._setLocalStorage('currentMeetingResponses', responses);
+
+    if (this.isSharePointEnabled()) {
+      try {
+        const result = await this.storageService.saveResponses(responses);
+        return { success: result.success, savedTo: 'SharePoint Document Library' };
+      } catch (error) {
+        console.warn('Failed to save responses to SharePoint:', error.message);
+        return { success: true, savedTo: 'localStorage', pendingSync: true };
+      }
+    }
+    return { success: true, savedTo: 'localStorage' };
   }
 
   /**
@@ -483,7 +520,8 @@ class HybridStorageProvider {
   // ========================================
 
   /**
-   * Sync all pending changes to SharePoint
+   * Sync all local data to SharePoint Document Library
+   * Uses the built-in syncFromLocalStorage method of the document storage service
    * @returns {Promise<Object>}
    */
   async syncToSharePoint() {
@@ -496,76 +534,36 @@ class HybridStorageProvider {
     }
 
     this.syncStatus.syncInProgress = true;
-    const results = {
-      success: true,
-      processed: 0,
-      failed: 0,
-      errors: []
-    };
 
     try {
-      const pendingChanges = [...this.syncStatus.pendingChanges];
-
-      for (const change of pendingChanges) {
-        try {
-          let result;
-
-          switch (change.type) {
-            case 'meeting':
-              if (change.action === 'create') {
-                result = await sharePoint2013DataService.saveMeeting(change.data);
-              } else if (change.action === 'update') {
-                result = await sharePoint2013DataService.updateMeeting(change.data.id, change.data.data);
-              } else if (change.action === 'delete') {
-                result = await sharePoint2013DataService.deleteMeeting(change.data.id);
-              }
-              break;
-
-            case 'attendee':
-              if (change.action === 'create') {
-                result = await sharePoint2013DataService.addAttendee(change.data);
-              } else if (change.action === 'delete') {
-                result = await sharePoint2013DataService.deactivateAttendee(change.data.id);
-              }
-              break;
-
-            case 'isolations':
-              if (change.action === 'create') {
-                result = await sharePoint2013DataService.saveIsolationsBatch(
-                  change.data.isolations,
-                  change.data.meetingId
-                );
-              }
-              break;
-          }
-
-          if (result && result.success !== false) {
-            results.processed++;
-            // Remove from pending changes
-            this._removePendingChange(change);
-          } else {
-            results.failed++;
-            results.errors.push(`${change.type} ${change.action}: ${result?.error || 'Unknown error'}`);
-          }
-        } catch (error) {
-          results.failed++;
-          results.errors.push(`${change.type} ${change.action}: ${error.message}`);
-        }
-      }
+      // Use the document storage service's built-in sync method
+      const result = await this.storageService.syncFromLocalStorage();
 
       this.syncStatus.lastSync = new Date().toISOString();
+      // Clear pending changes since we synced everything
+      this.syncStatus.pendingChanges = [];
       this._saveSyncStatus();
 
-      results.success = results.failed === 0;
+      return {
+        success: result.success,
+        synced: result.synced,
+        message: result.success
+          ? `Synced ${result.synced?.meetings || 0} meetings and ${result.synced?.attendees || 0} attendees`
+          : result.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
     } finally {
       this.syncStatus.syncInProgress = false;
     }
-
-    return results;
   }
 
   /**
-   * Force refresh from SharePoint (overwrites local cache)
+   * Force refresh from SharePoint Document Library (overwrites local cache)
+   * Uses the built-in syncToLocalStorage method of the document storage service
    * @returns {Promise<Object>}
    */
   async refreshFromSharePoint() {
@@ -574,18 +572,16 @@ class HybridStorageProvider {
     }
 
     try {
-      const [meetings, people] = await Promise.all([
-        sharePoint2013DataService.getMeetings(),
-        sharePoint2013DataService.getAttendees()
-      ]);
-
-      this._setLocalStorage('savedMeetings', meetings);
-      this._setLocalStorage('savedPeople', people);
+      // Use the document storage service's built-in sync method
+      const result = await this.storageService.syncToLocalStorage();
 
       return {
-        success: true,
-        meetings: meetings.length,
-        people: people.length
+        success: result.success,
+        meetings: result.synced?.meetings || 0,
+        people: result.synced?.attendees || 0,
+        message: result.success
+          ? `Loaded ${result.synced?.meetings || 0} meetings and ${result.synced?.attendees || 0} attendees from SharePoint`
+          : result.error
       };
     } catch (error) {
       return {
@@ -613,10 +609,11 @@ class HybridStorageProvider {
 
   /**
    * Create a backup of all data
-   * @returns {Object}
+   * @param {boolean} saveToSharePoint - Also save backup to SharePoint document library
+   * @returns {Promise<Object>}
    */
-  createBackup() {
-    return {
+  async createBackup(saveToSharePoint = true) {
+    const backup = {
       timestamp: new Date().toISOString(),
       version: APP_CONFIG?.VERSION || '4.0.0',
       storageMode: this.getStorageMode(),
@@ -630,14 +627,33 @@ class HybridStorageProvider {
         masterIsolations: this._getLocalStorage('masterIsolations', [])
       }
     };
+
+    // Also save backup to SharePoint Document Library
+    if (saveToSharePoint && this.isSharePointEnabled()) {
+      try {
+        const result = await this.storageService.createBackup();
+        backup.sharePointBackup = {
+          success: result.success,
+          fileName: result.backupFileName
+        };
+      } catch (error) {
+        backup.sharePointBackup = {
+          success: false,
+          error: error.message
+        };
+      }
+    }
+
+    return backup;
   }
 
   /**
    * Restore from a backup
    * @param {Object} backupData - Backup data object
-   * @returns {Object}
+   * @param {boolean} syncToSharePoint - Also restore to SharePoint document library
+   * @returns {Promise<Object>}
    */
-  restoreBackup(backupData) {
+  async restoreBackup(backupData, syncToSharePoint = true) {
     try {
       if (!backupData || !backupData.data) {
         throw new Error('Invalid backup format');
@@ -645,6 +661,7 @@ class HybridStorageProvider {
 
       const { data } = backupData;
 
+      // Restore to localStorage
       if (data.savedPeople) {
         this._setLocalStorage('savedPeople', data.savedPeople);
       }
@@ -667,11 +684,32 @@ class HybridStorageProvider {
         this._setLocalStorage('masterIsolations', data.masterIsolations);
       }
 
-      return {
+      const result = {
         success: true,
-        message: 'Backup restored successfully',
+        message: 'Backup restored to localStorage',
         restoredAt: new Date().toISOString()
       };
+
+      // Also restore to SharePoint Document Library
+      if (syncToSharePoint && this.isSharePointEnabled()) {
+        try {
+          const spResult = await this.storageService.restoreBackup(backupData);
+          result.sharePointRestore = {
+            success: spResult.success,
+            error: spResult.error
+          };
+          if (spResult.success) {
+            result.message = 'Backup restored to localStorage and SharePoint';
+          }
+        } catch (error) {
+          result.sharePointRestore = {
+            success: false,
+            error: error.message
+          };
+        }
+      }
+
+      return result;
     } catch (error) {
       return {
         success: false,
