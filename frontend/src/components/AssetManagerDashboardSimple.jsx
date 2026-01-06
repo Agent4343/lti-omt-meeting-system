@@ -47,42 +47,38 @@ const AssetManagerDashboard = () => {
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
 
-  // Auto-load test data if no data exists
+  // Load meetings data from localStorage or context
   useEffect(() => {
-    const autoLoadTestData = () => {
+    const loadMeetingsData = () => {
       try {
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
-        console.log('🔍 Asset Manager Dashboard - localStorage check:', {
+        console.log('🔍 Asset Manager Dashboard - Loading data:', {
           savedMeetingsCount: savedMeetings.length,
-          contextMeetingsCount: meetings.length,
-          savedMeetings: savedMeetings
+          contextMeetingsCount: meetings.length
         });
-        
-        // If no data exists, auto-load test data
-        if (savedMeetings.length === 0 && meetings.length === 0) {
-          console.log('🚀 Auto-loading test data for Asset Manager Dashboard...');
-          loadAssetManagerTestData();
-          return;
-        }
-        
-        // If localStorage has more meetings than context, use localStorage data
-        if (savedMeetings.length > meetings.length) {
-          console.log('📊 Using localStorage data instead of context');
+
+        // Use localStorage data if available, otherwise use context
+        if (savedMeetings.length > 0) {
+          console.log('📊 Using localStorage data:', savedMeetings.length, 'meetings');
           setLocalMeetings(savedMeetings);
-        } else {
+        } else if (meetings.length > 0) {
+          console.log('📊 Using context data:', meetings.length, 'meetings');
           setLocalMeetings(meetings);
+        } else {
+          console.log('⚠️ No meetings data found');
+          setLocalMeetings([]);
         }
       } catch (error) {
-        console.error('❌ Error reading localStorage:', error);
+        console.error('❌ Error reading data:', error);
         setLocalMeetings(meetings);
       }
     };
 
-    // Check immediately
-    autoLoadTestData();
+    // Load immediately
+    loadMeetingsData();
 
-    // Set up interval to check for changes
-    const interval = setInterval(autoLoadTestData, 2000);
+    // Refresh every 2 seconds to pick up changes
+    const interval = setInterval(loadMeetingsData, 2000);
 
     return () => clearInterval(interval);
   }, [meetings]);
