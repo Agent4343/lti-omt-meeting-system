@@ -47,42 +47,107 @@ const AssetManagerDashboard = () => {
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
 
-  // Auto-load test data if no data exists
+  // Load meetings data from multiple localStorage sources
   useEffect(() => {
-    const autoLoadTestData = () => {
+    const loadMeetingsData = () => {
       try {
+        // Check multiple data sources
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
-        console.log('🔍 Asset Manager Dashboard - localStorage check:', {
-          savedMeetingsCount: savedMeetings.length,
-          contextMeetingsCount: meetings.length,
-          savedMeetings: savedMeetings
+        const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
+        const ltiMasterList = JSON.parse(localStorage.getItem('ltiMasterList') || '[]');
+        const currentMeetingIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations') || '[]');
+        const currentMeetingResponses = JSON.parse(localStorage.getItem('currentMeetingResponses') || '{}');
+        const currentMeetingInfo = JSON.parse(localStorage.getItem('currentMeetingInfo') || 'null');
+
+        console.log('🔍 Asset Manager Dashboard - Checking all data sources:', {
+          savedMeetings: savedMeetings.length,
+          pastMeetings: pastMeetings.length,
+          ltiMasterList: ltiMasterList.length,
+          currentMeetingIsolations: currentMeetingIsolations.length,
+          currentMeetingResponses: Object.keys(currentMeetingResponses).length,
+          contextMeetings: meetings.length
         });
-        
-        // If no data exists, auto-load test data
-        if (savedMeetings.length === 0 && meetings.length === 0) {
-          console.log('🚀 Auto-loading test data for Asset Manager Dashboard...');
-          loadAssetManagerTestData();
-          return;
+
+        // Combine all meeting sources
+        let allMeetings = [];
+
+        // Add saved meetings that have proper isolations/responses structure
+        savedMeetings.forEach(meeting => {
+          if (meeting.isolations && meeting.responses) {
+            allMeetings.push(meeting);
+          }
+        });
+
+        // Add past meetings
+        pastMeetings.forEach(meeting => {
+          if (meeting.isolations && meeting.responses) {
+            // Check for duplicates by ID
+            if (!allMeetings.some(m => m.id === meeting.id)) {
+              allMeetings.push(meeting);
+            }
+          }
+        });
+
+        // If we have current meeting isolations but no meetings with proper structure,
+        // create a synthetic meeting from current data
+        if (currentMeetingIsolations.length > 0) {
+          const currentMeetingId = currentMeetingInfo?.id || 'current-meeting';
+          const currentMeetingExists = allMeetings.some(m => m.id === currentMeetingId);
+
+          if (!currentMeetingExists) {
+            const syntheticMeeting = {
+              id: currentMeetingId,
+              name: currentMeetingInfo?.name || 'Current Meeting',
+              date: currentMeetingInfo?.date || new Date().toISOString().split('T')[0],
+              isolations: currentMeetingIsolations,
+              responses: currentMeetingResponses
+            };
+            allMeetings.push(syntheticMeeting);
+            console.log('📊 Created synthetic meeting from current isolations:', currentMeetingIsolations.length, 'LTIs');
+          }
         }
-        
-        // If localStorage has more meetings than context, use localStorage data
-        if (savedMeetings.length > meetings.length) {
-          console.log('📊 Using localStorage data instead of context');
-          setLocalMeetings(savedMeetings);
-        } else {
-          setLocalMeetings(meetings);
+
+        // If we have an LTI Master List but no meetings, create a synthetic meeting
+        if (allMeetings.length === 0 && ltiMasterList.length > 0) {
+          const syntheticMeeting = {
+            id: 'master-list-meeting',
+            name: 'LTI Master List Data',
+            date: new Date().toISOString().split('T')[0],
+            isolations: ltiMasterList,
+            responses: currentMeetingResponses
+          };
+          allMeetings.push(syntheticMeeting);
+          console.log('📊 Created synthetic meeting from LTI Master List:', ltiMasterList.length, 'LTIs');
         }
+
+        // Last resort: use context meetings
+        if (allMeetings.length === 0 && meetings.length > 0) {
+          console.log('📊 Using context data:', meetings.length, 'meetings');
+          allMeetings = meetings;
+        }
+
+        console.log('📊 Total meetings loaded:', allMeetings.length);
+
+        // Count total LTIs across all meetings
+        let totalLTIs = 0;
+        allMeetings.forEach(m => {
+          if (m.isolations) totalLTIs += m.isolations.length;
+        });
+        console.log('📊 Total LTIs found:', totalLTIs);
+
+        setLocalMeetings(allMeetings);
+
       } catch (error) {
-        console.error('❌ Error reading localStorage:', error);
+        console.error('❌ Error reading data:', error);
         setLocalMeetings(meetings);
       }
     };
 
-    // Check immediately
-    autoLoadTestData();
+    // Load immediately
+    loadMeetingsData();
 
-    // Set up interval to check for changes
-    const interval = setInterval(autoLoadTestData, 2000);
+    // Refresh every 2 seconds to pick up changes
+    const interval = setInterval(loadMeetingsData, 2000);
 
     return () => clearInterval(interval);
   }, [meetings]);
@@ -357,61 +422,105 @@ const AssetManagerDashboard = () => {
   // Process all LTI data from meetings - use localMeetings instead of meetings
   const processedLTIData = useMemo(() => {
     const allLTIs = [];
-    
+
     console.log('🔍 Processing LTI Data - localMeetings:', localMeetings);
-    
+
     localMeetings.forEach(meeting => {
       console.log('📋 Processing meeting:', meeting.id, meeting.date);
       console.log('   - Has isolations:', !!meeting.isolations, meeting.isolations?.length || 0);
       console.log('   - Has responses:', !!meeting.responses, Object.keys(meeting.responses || {}).length);
-      
-      if (meeting.isolations && meeting.responses) {
+
+      if (meeting.isolations) {
+        const responses = meeting.responses || {};
+
         meeting.isolations.forEach(isolation => {
-          const response = meeting.responses[isolation.id] || {};
-          const ageInfo = calculateLTIAge(isolation['Planned Start Date'] || isolation.plannedStartDate);
-          
-          console.log(`   - Processing LTI ${isolation.id}:`, {
-            plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
+          // Get the LTI ID - handle different naming conventions
+          const ltiId = isolation.id || isolation.ID || isolation['LTI Number'] || isolation['LTI ID'] || `LTI-${allLTIs.length + 1}`;
+
+          const response = responses[ltiId] || {};
+
+          // Handle different date field names
+          const startDate = isolation['Planned Start Date'] ||
+                           isolation.plannedStartDate ||
+                           isolation['Start Date'] ||
+                           isolation.startDate ||
+                           isolation['Date Created'] ||
+                           isolation.dateCreated;
+
+          const ageInfo = calculateLTIAge(startDate);
+
+          // Get description from various possible fields
+          const description = isolation.description ||
+                             isolation.Description ||
+                             isolation.Title ||
+                             isolation.title ||
+                             isolation['System/Equipment'] ||
+                             isolation.equipment ||
+                             'No description';
+
+          // Get risk level from isolation or response
+          const riskLevel = response.riskLevel ||
+                           isolation['Risk Level'] ||
+                           isolation.riskLevel ||
+                           isolation.Risk ||
+                           'N/A';
+
+          // Get MOC required from isolation or response
+          const mocRequired = response.mocRequired ||
+                             isolation['MOC Required'] ||
+                             isolation.mocRequired ||
+                             'N/A';
+
+          // Get equipment issues
+          const hasEquipmentIssues = isolation['Equipment Issues'] === 'Yes' ||
+                                    isolation.equipmentIssues === 'Yes' ||
+                                    response.equipmentDisconnectionRequired === 'Yes' ||
+                                    response.equipmentRemovalRequired === 'Yes';
+
+          console.log(`   - Processing LTI ${ltiId}:`, {
+            startDate: startDate,
             ageInfo: ageInfo,
-            hasResponse: !!response.riskLevel
+            hasResponse: Object.keys(response).length > 0,
+            riskLevel: riskLevel
           });
-          
+
           const ltiData = {
-            id: isolation.id,
-            description: isolation.description || isolation.Title || 'No description',
-            plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
+            id: ltiId,
+            description: description,
+            plannedStartDate: startDate,
             ageInfo: ageInfo,
             meetingDate: meeting.date,
-            
-            // Assessment data
-            riskLevel: response.riskLevel || 'N/A',
-            businessImpact: response.businessImpact || 'N/A',
-            mocRequired: response.mocRequired || 'N/A',
-            mocNumber: response.mocNumber || '',
-            mocStatus: response.mocStatus || 'N/A',
-            partsRequired: response.partsRequired || 'N/A',
-            partsExpectedDate: response.partsExpectedDate || '',
-            partsStatus: response.partsStatus || 'Not Assessed',
-            equipmentDisconnectionRequired: response.equipmentDisconnectionRequired || 'N/A',
+            systemEquipment: isolation['System/Equipment'] || isolation.equipment || '',
+
+            // Assessment data - from response or isolation
+            riskLevel: riskLevel,
+            businessImpact: response.businessImpact || isolation.businessImpact || 'N/A',
+            mocRequired: mocRequired,
+            mocNumber: response.mocNumber || isolation.mocNumber || '',
+            mocStatus: response.mocStatus || isolation.mocStatus || 'N/A',
+            partsRequired: response.partsRequired || isolation.partsRequired || 'N/A',
+            partsExpectedDate: response.partsExpectedDate || isolation.partsExpectedDate || '',
+            partsStatus: response.partsStatus || isolation.partsStatus || 'Not Assessed',
+            equipmentDisconnectionRequired: response.equipmentDisconnectionRequired || (hasEquipmentIssues ? 'Yes' : 'N/A'),
             equipmentRemovalRequired: response.equipmentRemovalRequired || 'N/A',
-            plannedResolutionDate: response.plannedResolutionDate || '',
-            actionRequired: response.actionRequired || 'N/A',
+            plannedResolutionDate: response.plannedResolutionDate || isolation.plannedResolutionDate || '',
+            actionRequired: response.actionRequired || isolation.actionRequired || 'N/A',
             actionItems: response.actionItems || [],
-            comments: response.comments || '',
-            
+            comments: response.comments || isolation.comments || '',
+
             // WMS Manual risks
-            corrosionRisk: response.corrosionRisk || 'N/A',
-            deadLegsRisk: response.deadLegsRisk || 'N/A',
-            automationLossRisk: response.automationLossRisk || 'N/A'
+            corrosionRisk: response.corrosionRisk || isolation.corrosionRisk || 'N/A',
+            deadLegsRisk: response.deadLegsRisk || isolation.deadLegsRisk || 'N/A',
+            automationLossRisk: response.automationLossRisk || isolation.automationLossRisk || 'N/A'
           };
-          
+
           allLTIs.push(ltiData);
         });
       } else {
-        console.log('   ⚠️ Meeting missing isolations or responses');
+        console.log('   ⚠️ Meeting missing isolations');
       }
     });
-    
+
     console.log('🎯 Final processed LTIs:', allLTIs.length, allLTIs);
     return allLTIs;
   }, [localMeetings]);

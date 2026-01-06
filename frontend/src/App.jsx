@@ -24,8 +24,8 @@ function App() {
     <ErrorBoundary>
       <Router>
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          {/* Debug banner - shows app status without F12. Set show={false} to hide */}
-          <DebugBanner show={true} />
+          {/* Debug banner - shows app status without F12. Set show={true} to enable */}
+          <DebugBanner show={false} />
           <NavigationHeader />
           <Box component="main" sx={{ flexGrow: 1, pb: 4 }}>
              <Routes>
