@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { Box } from '@mui/material';
 import LandingPage from './components/LandingPage';
 import ManagePeoplePage from './components/ManagePeoplePage';
@@ -14,6 +14,7 @@ import AssetManagerReviewPage from './components/AssetManagerReviewPage';
 import AssetManagerDashboard from './components/AssetManagerDashboardSimple';
 import NavigationHeader from './components/NavigationHeader';
 import ErrorBoundary from './components/ErrorBoundary';
+import DebugBanner from './components/DebugBanner';
 
 // Context provider is now handled in index.jsx to avoid duplication
 // Theme and CssBaseline are handled in index.jsx for consistency
@@ -23,6 +24,8 @@ function App() {
     <ErrorBoundary>
       <Router>
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          {/* Debug banner - shows app status without F12. Set show={false} to hide */}
+          <DebugBanner show={true} />
           <NavigationHeader />
           <Box component="main" sx={{ flexGrow: 1, pb: 4 }}>
              <Routes>
