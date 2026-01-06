@@ -1,20 +1,24 @@
 import { useState } from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  IconButton, 
-  Box, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
   Divider,
   Container,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Tooltip,
+  CircularProgress,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -27,14 +31,22 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import BusinessIcon from '@mui/icons-material/Business';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import CloudIcon from '@mui/icons-material/Cloud';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
+import CloudSyncIcon from '@mui/icons-material/CloudSync';
 import { APP_NAME, APP_VERSION } from '../config';
+import { useAppContext } from '../context/AppContext';
 
 function NavigationHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  const { storageStatus, syncToSharePoint } = useAppContext();
 
    const menuItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/' },
@@ -60,6 +72,39 @@ function NavigationHeader() {
     }
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
+
+  // Handle SharePoint sync
+  const handleSync = async () => {
+    if (syncing) return;
+
+    setSyncing(true);
+    try {
+      const result = await syncToSharePoint();
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: 'Data synced to SharePoint successfully!',
+          severity: 'success'
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.message || 'SharePoint sync failed',
+          severity: 'error'
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Error syncing to SharePoint: ' + error.message,
+        severity: 'error'
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const isSharePointConnected = storageStatus?.sharePointAvailable;
 
   const drawer = (
     <Box
@@ -117,12 +162,34 @@ function NavigationHeader() {
           <Typography
             variant="h6"
             component="div"
-            sx={{ flexGrow: 1, cursor: 'pointer' }}
+            sx={{ cursor: 'pointer', mr: 2 }}
             onClick={() => navigate('/')}
           >
             {APP_NAME}
           </Typography>
-          
+
+          {/* SharePoint Sync Button */}
+          <Tooltip title={isSharePointConnected ? "Sync to SharePoint" : "SharePoint not connected"}>
+            <span>
+              <IconButton
+                color="inherit"
+                onClick={handleSync}
+                disabled={!isSharePointConnected || syncing}
+                sx={{ mr: 1 }}
+              >
+                {syncing ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : isSharePointConnected ? (
+                  <CloudSyncIcon />
+                ) : (
+                  <CloudOffIcon />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Box sx={{ flexGrow: 1 }} />
+
           {!isMobile && (
             <Box sx={{ display: 'flex' }}>
               {menuItems.map((item) => (
@@ -153,6 +220,22 @@ function NavigationHeader() {
       >
         {drawer}
       </Drawer>
+
+      {/* Sync Status Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </AppBar>
   );
 }
