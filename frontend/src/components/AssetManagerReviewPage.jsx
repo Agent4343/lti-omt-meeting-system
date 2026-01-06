@@ -61,192 +61,161 @@ function AssetManagerReviewPage() {
   const loadAssetManagerReviewData = () => {
     try {
       console.log('Loading Asset Manager review data...');
-      
+
       // Get all meetings from localStorage - check multiple possible keys
       const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
-      const allMeetings = JSON.parse(localStorage.getItem('allMeetings')) || [];
+      const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
+      const ltiMasterList = JSON.parse(localStorage.getItem('ltiMasterList')) || [];
       const currentMeetingIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
       const currentMeetingResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
-      
+
       console.log('Found saved meetings:', savedMeetings.length);
+      console.log('Found past meetings:', pastMeetings.length);
+      console.log('Found LTI master list:', ltiMasterList.length);
       console.log('Found current meeting isolations:', currentMeetingIsolations.length);
-      console.log('Sample saved meeting:', savedMeetings[0]);
-      console.log('Sample current isolation:', currentMeetingIsolations[0]);
-      
+
       let isolationsOver6Months = [];
       let isolationsRemoved = [];
       let mocRequired = [];
       let riskSummary = { critical: 0, high: 0, medium: 0, low: 0 };
 
-      // Process current meeting isolations first
-      if (currentMeetingIsolations.length > 0) {
-        console.log('Processing current meeting isolations...');
-        
-        currentMeetingIsolations.forEach((isolation, isolationIndex) => {
-          console.log(`Processing current isolation ${isolationIndex + 1}:`, isolation.id);
-          
-          // Try multiple date field variations
-          const plannedStartDateStr = isolation['Planned Start Date'] || 
-                                    isolation.plannedStartDate || 
-                                    isolation.PlannedStartDate ||
-                                    isolation['planned_start_date'] ||
-                                    isolation.startDate;
-          
-          if (!plannedStartDateStr) {
-            console.log(`No planned start date found for isolation ${isolation.id}`);
-            return;
+      // Helper function to process an isolation
+      const processIsolation = (isolation, responses, sourceName) => {
+        // Get the LTI ID - handle different naming conventions
+        const isolationId = isolation.id || isolation.ID || isolation['LTI Number'] || isolation['LTI ID'];
+        if (!isolationId) return;
+
+        // Try multiple date field variations
+        const plannedStartDateStr = isolation['Planned Start Date'] ||
+                                  isolation.plannedStartDate ||
+                                  isolation.PlannedStartDate ||
+                                  isolation['planned_start_date'] ||
+                                  isolation['Start Date'] ||
+                                  isolation.startDate ||
+                                  isolation['Date Created'] ||
+                                  isolation.dateCreated;
+
+        if (!plannedStartDateStr) return;
+
+        const plannedStartDate = new Date(plannedStartDateStr);
+        if (isNaN(plannedStartDate.getTime())) return;
+
+        const ageInMonths = (new Date() - plannedStartDate) / (1000 * 60 * 60 * 24 * 30);
+
+        // Get response data for this isolation
+        const response = responses[isolationId] || {};
+
+        // Get risk level from response or isolation
+        const riskLevel = response.riskLevel ||
+                         isolation['Risk Level'] ||
+                         isolation.riskLevel ||
+                         isolation.Risk ||
+                         'N/A';
+
+        // Get MOC required from response or isolation
+        const mocRequiredValue = response.mocRequired ||
+                                isolation['MOC Required'] ||
+                                isolation.mocRequired ||
+                                'N/A';
+
+        // Check if isolation is over 6 months and not already added
+        if (ageInMonths >= 6 && !isolationsOver6Months.find(iso => iso.id === isolationId)) {
+          const isolationData = {
+            id: isolationId,
+            description: isolation.description || isolation.Description || isolation.Title || isolation.title || isolation['System/Equipment'] || 'No description',
+            plannedStartDate: plannedStartDate.toLocaleDateString(),
+            ageInMonths: Math.floor(ageInMonths),
+            riskLevel: riskLevel,
+            mocRequired: mocRequiredValue,
+            mocNumber: response.mocNumber || isolation.mocNumber || '',
+            status: response.status || isolation.status || 'Active',
+            resolutionStrategy: response.resolutionStrategy || isolation.resolutionStrategy || 'N/A',
+            escalationReason: response.escalationReason || '',
+            meetingDate: sourceName
+          };
+
+          isolationsOver6Months.push(isolationData);
+
+          // Count risk levels
+          const risk = riskLevel?.toLowerCase() || 'n/a';
+          if (risk === 'critical') riskSummary.critical++;
+          else if (risk === 'high') riskSummary.high++;
+          else if (risk === 'medium') riskSummary.medium++;
+          else if (risk === 'low') riskSummary.low++;
+
+          // Check if MOC is required
+          if (mocRequiredValue === 'Yes') {
+            mocRequired.push(isolationData);
           }
-          
-          const plannedStartDate = new Date(plannedStartDateStr);
-          if (isNaN(plannedStartDate.getTime())) {
-            console.log(`Invalid date for isolation ${isolation.id}:`, plannedStartDateStr);
-            return;
-          }
-          
-          const ageInMonths = (new Date() - plannedStartDate) / (1000 * 60 * 60 * 24 * 30);
-          console.log(`Current isolation ${isolation.id} age: ${ageInMonths.toFixed(1)} months`);
-          
-          // Get response data for this isolation from current meeting responses
-          const response = currentMeetingResponses[isolation.id] || {};
-          console.log(`Current response data for ${isolation.id}:`, response);
-          
-          // Check if isolation is over 6 months
-          if (ageInMonths >= 6) {
-            console.log(`✅ Current isolation ${isolation.id} is over 6 months (${ageInMonths.toFixed(1)} months)`);
-            
-            const isolationData = {
-              id: isolation.id,
-              description: isolation.description || isolation.Title || isolation.title || 'No description',
+        }
+
+        // Check if isolation has been removed
+        if (response.status === 'Completed' || response.status === 'Removed' ||
+            isolation.status === 'Completed' || isolation.status === 'Removed') {
+          if (!isolationsRemoved.find(iso => iso.id === isolationId)) {
+            isolationsRemoved.push({
+              id: isolationId,
+              description: isolation.description || isolation.Description || isolation.Title || 'No description',
               plannedStartDate: plannedStartDate.toLocaleDateString(),
               ageInMonths: Math.floor(ageInMonths),
-              riskLevel: response.riskLevel || 'N/A',
-              mocRequired: response.mocRequired || 'N/A',
-              mocNumber: response.mocNumber || '',
-              status: response.status || 'Active',
-              resolutionStrategy: response.resolutionStrategy || 'N/A',
-              escalationReason: response.escalationReason || '',
-              meetingDate: 'Current Meeting'
-            };
-
-            isolationsOver6Months.push(isolationData);
-
-            // Count risk levels
-            const risk = response.riskLevel?.toLowerCase() || 'n/a';
-            if (risk === 'critical') riskSummary.critical++;
-            else if (risk === 'high') riskSummary.high++;
-            else if (risk === 'medium') riskSummary.medium++;
-            else if (risk === 'low') riskSummary.low++;
-
-            // Check if MOC is required
-            if (response.mocRequired === 'Yes') {
-              mocRequired.push(isolationData);
-            }
+              riskLevel: riskLevel,
+              mocRequired: mocRequiredValue,
+              removalDate: sourceName,
+              removalReason: response.comments || 'Completed'
+            });
           }
+        }
+      };
+
+      // Process LTI Master List first (primary source of all LTIs)
+      if (ltiMasterList.length > 0) {
+        console.log('Processing LTI Master List...');
+        ltiMasterList.forEach(isolation => {
+          processIsolation(isolation, currentMeetingResponses, 'Master List');
+        });
+      }
+
+      // Process current meeting isolations
+      if (currentMeetingIsolations.length > 0) {
+        console.log('Processing current meeting isolations...');
+        currentMeetingIsolations.forEach(isolation => {
+          processIsolation(isolation, currentMeetingResponses, 'Current Meeting');
         });
       }
 
       // Process saved meetings
-      savedMeetings.forEach((meeting, meetingIndex) => {
-        console.log(`Processing saved meeting ${meetingIndex + 1}:`, meeting.date);
-        
-        // Check if meeting has isolations in the expected format
+      savedMeetings.forEach((meeting) => {
         let meetingIsolations = [];
         let meetingResponses = {};
-        
+
         if (meeting.isolations && Array.isArray(meeting.isolations)) {
           meetingIsolations = meeting.isolations;
           meetingResponses = meeting.responses || {};
-        } else if (meeting.meetingData && meeting.meetingData.isolations) {
+        } else if (meeting.meetingData?.isolations) {
           meetingIsolations = meeting.meetingData.isolations;
           meetingResponses = meeting.meetingData.responses || {};
-        } else if (meeting.responses) {
-          // If we only have responses, try to reconstruct isolations
-          meetingResponses = meeting.responses;
-          meetingIsolations = Object.keys(meetingResponses).map(id => ({ id }));
         }
-        
-        console.log(`Found ${meetingIsolations.length} isolations in saved meeting ${meetingIndex + 1}`);
-        
-        meetingIsolations.forEach((isolation, isolationIndex) => {
-          console.log(`Processing saved isolation ${isolationIndex + 1}:`, isolation.id);
-          
-          // Try multiple date field variations
-          const plannedStartDateStr = isolation['Planned Start Date'] || 
-                                    isolation.plannedStartDate || 
-                                    isolation.PlannedStartDate ||
-                                    isolation['planned_start_date'] ||
-                                    isolation.startDate;
-          
-          if (!plannedStartDateStr) {
-            console.log(`No planned start date found for saved isolation ${isolation.id}`);
-            return;
-          }
-          
-          const plannedStartDate = new Date(plannedStartDateStr);
-          if (isNaN(plannedStartDate.getTime())) {
-            console.log(`Invalid date for saved isolation ${isolation.id}:`, plannedStartDateStr);
-            return;
-          }
-          
-          const ageInMonths = (new Date() - plannedStartDate) / (1000 * 60 * 60 * 24 * 30);
-          console.log(`Saved isolation ${isolation.id} age: ${ageInMonths.toFixed(1)} months`);
-          
-          // Get response data for this isolation
-          const response = meetingResponses[isolation.id] || {};
-          console.log(`Saved response data for ${isolation.id}:`, response);
-          
-          // Check if isolation is over 6 months and not already added from current meeting
-          if (ageInMonths >= 6 && !isolationsOver6Months.find(iso => iso.id === isolation.id)) {
-            console.log(`✅ Saved isolation ${isolation.id} is over 6 months (${ageInMonths.toFixed(1)} months)`);
-            
-            const isolationData = {
-              id: isolation.id,
-              description: isolation.description || isolation.Title || isolation.title || 'No description',
-              plannedStartDate: plannedStartDate.toLocaleDateString(),
-              ageInMonths: Math.floor(ageInMonths),
-              riskLevel: response.riskLevel || 'N/A',
-              mocRequired: response.mocRequired || 'N/A',
-              mocNumber: response.mocNumber || '',
-              status: response.status || 'Active',
-              resolutionStrategy: response.resolutionStrategy || 'N/A',
-              escalationReason: response.escalationReason || '',
-              meetingDate: meeting.date
-            };
 
-            isolationsOver6Months.push(isolationData);
+        meetingIsolations.forEach(isolation => {
+          processIsolation(isolation, meetingResponses, meeting.date || 'Saved Meeting');
+        });
+      });
 
-            // Count risk levels
-            const risk = response.riskLevel?.toLowerCase() || 'n/a';
-            if (risk === 'critical') riskSummary.critical++;
-            else if (risk === 'high') riskSummary.high++;
-            else if (risk === 'medium') riskSummary.medium++;
-            else if (risk === 'low') riskSummary.low++;
+      // Process past meetings
+      pastMeetings.forEach((meeting) => {
+        let meetingIsolations = [];
+        let meetingResponses = {};
 
-            // Check if MOC is required
-            if (response.mocRequired === 'Yes') {
-              mocRequired.push(isolationData);
-            }
-          }
+        if (meeting.isolations && Array.isArray(meeting.isolations)) {
+          meetingIsolations = meeting.isolations;
+          meetingResponses = meeting.responses || {};
+        } else if (meeting.meetingData?.isolations) {
+          meetingIsolations = meeting.meetingData.isolations;
+          meetingResponses = meeting.meetingData.responses || {};
+        }
 
-          // Check if isolation has been removed
-          if (response.status === 'Completed' || response.status === 'Removed' || 
-              isolation.status === 'Completed' || isolation.status === 'Removed') {
-            isolationsRemoved.push({
-              id: isolation.id,
-              description: isolation.description || isolation.Title || isolation.title || 'No description',
-              plannedStartDate: plannedStartDate.toLocaleDateString(),
-              ageInMonths: Math.floor(ageInMonths),
-              riskLevel: response.riskLevel || 'N/A',
-              mocRequired: response.mocRequired || 'N/A',
-              mocNumber: response.mocNumber || '',
-              status: response.status || 'Active',
-              resolutionStrategy: response.resolutionStrategy || 'N/A',
-              escalationReason: response.escalationReason || '',
-              meetingDate: meeting.date,
-              removalDate: meeting.date,
-              removalReason: response.comments || 'Completed'
-            });
-          }
+        meetingIsolations.forEach(isolation => {
+          processIsolation(isolation, meetingResponses, meeting.date || 'Past Meeting');
         });
       });
 
