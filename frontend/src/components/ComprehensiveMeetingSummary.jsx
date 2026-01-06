@@ -51,11 +51,12 @@ import PrintIcon from '@mui/icons-material/Print';
 
 function ComprehensiveMeetingSummary() {
   const navigate = useNavigate();
-  const { currentMeeting } = useAppContext();
+  const { currentMeeting, syncToSharePoint, storageStatus } = useAppContext();
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [responses, setResponses] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
   // Simplified meeting data
@@ -215,12 +216,13 @@ function ComprehensiveMeetingSummary() {
     setConfirmDialog(true);
   };
   
-  const finalizeMeeting = () => {
+  const finalizeMeeting = async () => {
     const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
     const savedIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
-    
+
     // Create comprehensive meeting summary with all isolation data
     const meeting = {
+      id: `meeting-${Date.now()}`,
       date: meetingInfo.date,
       attendees: meetingInfo.attendees,
       responses: responses,
@@ -231,7 +233,12 @@ function ComprehensiveMeetingSummary() {
     };
     pastMeetings.push(meeting);
     localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
-    
+
+    // Also save to savedMeetings for Asset Manager Dashboard
+    const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
+    savedMeetings.push(meeting);
+    localStorage.setItem('savedMeetings', JSON.stringify(savedMeetings));
+
     // Store current meeting responses as previous meeting responses for next meeting
     localStorage.setItem('previousMeetingResponses', JSON.stringify(responses));
 
@@ -239,18 +246,55 @@ function ComprehensiveMeetingSummary() {
     localStorage.removeItem('currentMeetingInfo');
     localStorage.removeItem('currentMeetingIsolations');
     localStorage.removeItem('currentMeetingResponses');
-    
+
     setConfirmDialog(false);
-    setSnackbar({
-      open: true,
-      message: 'Meeting summary saved successfully!',
-      severity: 'success'
-    });
-    
+
+    // Sync to SharePoint if available
+    if (storageStatus?.sharePointAvailable) {
+      setSyncing(true);
+      setSnackbar({
+        open: true,
+        message: 'Meeting saved! Syncing to SharePoint...',
+        severity: 'info'
+      });
+
+      try {
+        const syncResult = await syncToSharePoint();
+        setSyncing(false);
+
+        if (syncResult.success) {
+          setSnackbar({
+            open: true,
+            message: 'Meeting saved and synced to SharePoint!',
+            severity: 'success'
+          });
+        } else {
+          setSnackbar({
+            open: true,
+            message: 'Meeting saved locally. SharePoint sync failed.',
+            severity: 'warning'
+          });
+        }
+      } catch (error) {
+        setSyncing(false);
+        setSnackbar({
+          open: true,
+          message: 'Meeting saved locally. SharePoint sync error.',
+          severity: 'warning'
+        });
+      }
+    } else {
+      setSnackbar({
+        open: true,
+        message: 'Meeting summary saved successfully!',
+        severity: 'success'
+      });
+    }
+
     // Navigate after a short delay
     setTimeout(() => {
       navigate('/past');
-    }, 1500);
+    }, 2000);
   };
   
   const handleCloseSnackbar = () => {

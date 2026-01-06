@@ -81,7 +81,8 @@ import * as XLSX from 'xlsx';
 
 function MeetingSummaryPage() {
   const navigate = useNavigate();
-  const { currentMeeting } = useAppContext();
+  const { currentMeeting, syncToSharePoint, storageStatus } = useAppContext();
+  const [syncing, setSyncing] = useState(false);
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [responses, setResponses] = useState(null);
   const [tabValue, setTabValue] = useState(0);
@@ -180,18 +181,27 @@ function MeetingSummaryPage() {
     setConfirmDialog(true);
   };
   
-  const finalizeMeeting = () => {
+  const finalizeMeeting = async () => {
     const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
+    const isolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
+
     const newMeeting = {
+      id: `meeting-${Date.now()}`,
       date: meetingInfo.date,
       attendees: meetingInfo.attendees,
+      isolations: isolations,
       responses: responses,
       timestamp: new Date().toISOString(),
       statistics: statistics
     };
     pastMeetings.push(newMeeting);
     localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
-    
+
+    // Also save to savedMeetings for Asset Manager Dashboard
+    const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
+    savedMeetings.push(newMeeting);
+    localStorage.setItem('savedMeetings', JSON.stringify(savedMeetings));
+
     // Store current meeting responses as previous meeting responses for next meeting
     localStorage.setItem('previousMeetingResponses', JSON.stringify(responses));
 
@@ -199,18 +209,55 @@ function MeetingSummaryPage() {
     localStorage.removeItem('currentMeetingInfo');
     localStorage.removeItem('currentMeetingIsolations');
     localStorage.removeItem('currentMeetingResponses');
-    
+
     setConfirmDialog(false);
-    setSnackbar({
-      open: true,
-      message: 'Meeting saved successfully!',
-      severity: 'success'
-    });
-    
+
+    // Sync to SharePoint if available
+    if (storageStatus?.sharePointAvailable) {
+      setSyncing(true);
+      setSnackbar({
+        open: true,
+        message: 'Meeting saved! Syncing to SharePoint...',
+        severity: 'info'
+      });
+
+      try {
+        const syncResult = await syncToSharePoint();
+        setSyncing(false);
+
+        if (syncResult.success) {
+          setSnackbar({
+            open: true,
+            message: 'Meeting saved and synced to SharePoint!',
+            severity: 'success'
+          });
+        } else {
+          setSnackbar({
+            open: true,
+            message: 'Meeting saved locally. SharePoint sync failed.',
+            severity: 'warning'
+          });
+        }
+      } catch (error) {
+        setSyncing(false);
+        setSnackbar({
+          open: true,
+          message: 'Meeting saved locally. SharePoint sync error.',
+          severity: 'warning'
+        });
+      }
+    } else {
+      setSnackbar({
+        open: true,
+        message: 'Meeting saved successfully!',
+        severity: 'success'
+      });
+    }
+
     // Navigate after a short delay to allow the snackbar to be seen
     setTimeout(() => {
       navigate('/past');
-    }, 1500);
+    }, 2000);
   };
   
   const downloadExcel = () => {
