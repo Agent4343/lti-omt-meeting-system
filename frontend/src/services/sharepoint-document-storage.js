@@ -17,18 +17,55 @@
 
 class SharePointDocumentStorage {
   constructor() {
-    this.siteUrl = this._getSiteUrl();
     this.libraryName = 'LTIMeetingData'; // Default library name
     this.digestValue = null;
     this.digestExpiry = null;
     this._isSharePointEnvironment = this._checkSharePointEnvironment();
+    this.siteUrl = this._getSiteUrl();
+
+    console.log('SharePointDocumentStorage initialized:', {
+      isSharePoint: this._isSharePointEnvironment,
+      siteUrl: this.siteUrl,
+      libraryName: this.libraryName
+    });
   }
 
   /**
    * Check if running in SharePoint environment
+   * Detects SharePoint from URL pattern if _spPageContextInfo is not available
    */
   _checkSharePointEnvironment() {
-    return typeof _spPageContextInfo !== 'undefined';
+    // Check for _spPageContextInfo first (classic SharePoint pages)
+    if (typeof _spPageContextInfo !== 'undefined') {
+      console.log('SharePoint detected via _spPageContextInfo');
+      return true;
+    }
+
+    // Check URL patterns for SharePoint
+    const url = window.location.href.toLowerCase();
+    const hostname = window.location.hostname.toLowerCase();
+
+    // Common SharePoint URL patterns
+    const sharePointPatterns = [
+      '.sharepoint.com',      // SharePoint Online
+      '/sites/',              // SharePoint site collections
+      '/_layouts/',           // SharePoint layouts
+      '/siteassets/',         // SharePoint Site Assets
+      '/shared%20documents/', // Shared Documents (encoded)
+      '/shared documents/',   // Shared Documents
+      'ishareteam',           // Corporate SharePoint (like ishareteam2.na.xom.com)
+      '.xom.com'              // Corporate domain
+    ];
+
+    for (const pattern of sharePointPatterns) {
+      if (url.includes(pattern) || hostname.includes(pattern)) {
+        console.log(`SharePoint detected via URL pattern: ${pattern}`);
+        return true;
+      }
+    }
+
+    console.log('SharePoint not detected');
+    return false;
   }
 
   /**
@@ -40,12 +77,38 @@ class SharePointDocumentStorage {
 
   /**
    * Get SharePoint site URL
+   * Extracts the site collection URL from the current page URL
    */
   _getSiteUrl() {
+    // Use _spPageContextInfo if available
     if (typeof _spPageContextInfo !== 'undefined') {
       return _spPageContextInfo.webAbsoluteUrl;
     }
-    return window.location.origin;
+
+    // Extract site URL from current location
+    const url = window.location.href;
+    const hostname = window.location.origin;
+
+    // Try to extract site collection URL (e.g., /sites/EMPC0872)
+    const sitesMatch = url.match(/(https?:\/\/[^\/]+\/sites\/[^\/]+)/i);
+    if (sitesMatch) {
+      console.log('Site URL extracted from /sites/ pattern:', sitesMatch[1]);
+      return sitesMatch[1];
+    }
+
+    // Try to match corporate SharePoint pattern
+    const corpMatch = url.match(/(https?:\/\/[^\/]+)/i);
+    if (corpMatch && this._isSharePointEnvironment) {
+      // For URLs like ishareteam2.na.xom.com/sites/EMPC0872/...
+      const pathMatch = url.match(/(https?:\/\/[^\/]+\/sites\/[^\/]+)/i);
+      if (pathMatch) {
+        console.log('Site URL extracted:', pathMatch[1]);
+        return pathMatch[1];
+      }
+    }
+
+    console.log('Using origin as site URL:', hostname);
+    return hostname;
   }
 
   /**

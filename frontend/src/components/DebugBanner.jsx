@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Collapse, IconButton } from '@mui/material';
 import { ExpandMore, ExpandLess, CheckCircle, Error, Warning } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
+import sharePointDocumentStorage from '../services/sharepoint-document-storage';
 
 const DebugBanner = ({ show = true }) => {
   const [expanded, setExpanded] = useState(false);
@@ -21,13 +22,16 @@ const DebugBanner = ({ show = true }) => {
     const isChrome = ua.includes('Chrome') && !isEdge;
     const isFirefox = ua.includes('Firefox');
     const isIE = ua.includes('Trident') || ua.includes('MSIE');
-    const isSharePoint = typeof window._spPageContextInfo !== 'undefined';
+
+    // Use the SharePoint storage service to detect SharePoint
+    const isSharePoint = sharePointDocumentStorage.isAvailable();
+    const spSiteUrl = sharePointDocumentStorage.siteUrl;
 
     setBrowserInfo({
       browser: isEdge ? 'Edge' : isChrome ? 'Chrome' : isFirefox ? 'Firefox' : isIE ? 'IE' : 'Other',
       userAgent: ua.substring(0, 100) + '...',
       isSharePoint,
-      sharePointUrl: isSharePoint ? window._spPageContextInfo?.webAbsoluteUrl : 'N/A',
+      sharePointUrl: spSiteUrl,
       localStorage: (() => {
         try {
           localStorage.setItem('_test', '1');
