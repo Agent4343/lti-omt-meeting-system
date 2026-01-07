@@ -49,23 +49,16 @@
     .edge-warning button:hover {
       background: #fff3e0;
     }
-    .edge-warning .dismiss {
-      background: transparent;
-      color: white;
-      border: 1px solid white;
-      margin-left: 10px;
-    }
   </style>
 </head>
 <body>
   <div id="edge-warning" class="edge-warning">
-    <strong>For best experience, please use Google Chrome</strong>
-    <p>Click the URL below to copy it, then paste in Google Chrome:</p>
+    <strong>This application requires Google Chrome</strong>
+    <p>Microsoft Edge is not supported. Please copy the URL below and open it in Google Chrome:</p>
     <div class="url-box" onclick="copyUrl()" title="Click to copy URL">
       <span id="current-url"></span>
     </div>
     <button onclick="copyUrl()">Copy URL</button>
-    <button class="dismiss" onclick="dismissWarning()">Continue in Edge</button>
   </div>
   <div id="root"></div>
 
@@ -77,7 +70,7 @@
     }
 
     // Show warning if Edge detected
-    if (isEdge() && !sessionStorage.getItem('edgeWarningDismissed')) {
+    if (isEdge()) {
       document.getElementById('edge-warning').classList.add('show');
       document.getElementById('current-url').textContent = window.location.href;
     }
@@ -85,7 +78,7 @@
     // Copy URL to clipboard
     function copyUrl() {
       navigator.clipboard.writeText(window.location.href).then(function() {
-        alert('URL copied! Paste it in Google Chrome.');
+        alert('URL copied! Now open Google Chrome and paste this URL in the address bar.');
       }).catch(function() {
         // Fallback for older browsers
         var textArea = document.createElement('textarea');
@@ -94,14 +87,8 @@
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        alert('URL copied! Paste it in Google Chrome.');
+        alert('URL copied! Now open Google Chrome and paste this URL in the address bar.');
       });
-    }
-
-    // Dismiss warning for this session
-    function dismissWarning() {
-      document.getElementById('edge-warning').classList.remove('show');
-      sessionStorage.setItem('edgeWarningDismissed', 'true');
     }
   </script>
 </body>
