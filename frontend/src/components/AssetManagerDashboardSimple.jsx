@@ -25,7 +25,11 @@ import {
   ListItem,
   ListItemText,
   Divider,
-  Snackbar
+  Snackbar,
+  Tabs,
+  Tab,
+  Collapse,
+  LinearProgress
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -38,7 +42,12 @@ import {
   Visibility as ViewIcon,
   CalendarToday as CalendarIcon,
   Error as ErrorIcon,
-  PictureAsPdf as PdfIcon
+  PictureAsPdf as PdfIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  HourglassEmpty as PendingIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
 import { exportAssetManagerReport } from '../utils/pdfExport';
@@ -50,6 +59,8 @@ const AssetManagerDashboard = () => {
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [ltiFilterTab, setLtiFilterTab] = useState(0); // 0=All, 1=6+Months, 2=Critical/High, 3=MOC Required
+  const [expandedLTI, setExpandedLTI] = useState(null);
 
   // Load meetings data from multiple localStorage sources
   useEffect(() => {
@@ -593,9 +604,45 @@ const AssetManagerDashboard = () => {
     }
   };
 
+  // Get status icon based on value
+  const getStatusIcon = (status) => {
+    if (!status || status === 'N/A') return <PendingIcon sx={{ fontSize: 16, color: 'grey.500' }} />;
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus.includes('complete') || lowerStatus.includes('approved') || lowerStatus === 'yes') {
+      return <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />;
+    }
+    if (lowerStatus.includes('pending') || lowerStatus.includes('progress') || lowerStatus.includes('submitted') || lowerStatus.includes('ordered')) {
+      return <PendingIcon sx={{ fontSize: 16, color: 'warning.main' }} />;
+    }
+    if (lowerStatus.includes('required') || lowerStatus.includes('needed')) {
+      return <CancelIcon sx={{ fontSize: 16, color: 'error.main' }} />;
+    }
+    return <PendingIcon sx={{ fontSize: 16, color: 'grey.500' }} />;
+  };
+
+  // Filter LTIs based on selected tab
+  const getFilteredLTIs = () => {
+    switch (ltiFilterTab) {
+      case 1: // 6+ Months
+        return processedLTIData.filter(lti => lti.ageInfo.isSixMonthsPlus);
+      case 2: // Critical/High Risk
+        return processedLTIData.filter(lti => lti.riskLevel === 'Critical' || lti.riskLevel === 'High');
+      case 3: // MOC Required
+        return processedLTIData.filter(lti => lti.mocRequired === 'Yes');
+      default: // All
+        return processedLTIData;
+    }
+  };
+
+  const filteredLTIs = getFilteredLTIs();
+
   const handleViewDetails = (lti) => {
     setSelectedLTI(lti);
     setDetailDialogOpen(true);
+  };
+
+  const toggleExpandLTI = (ltiId) => {
+    setExpandedLTI(expandedLTI === ltiId ? null : ltiId);
   };
 
   const generateMeetingAgenda = () => {
@@ -842,6 +889,206 @@ const AssetManagerDashboard = () => {
               <strong>Good News:</strong> No LTIs are currently over 6 months old requiring Asset Manager review.
             </Alert>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Complete LTI Status - Full Meal Deal */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <DashboardIcon sx={{ mr: 1, color: 'primary.main' }} />
+            All LTIs - Complete Status Overview
+          </Typography>
+
+          {/* Filter Tabs */}
+          <Tabs
+            value={ltiFilterTab}
+            onChange={(e, newValue) => setLtiFilterTab(newValue)}
+            sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+          >
+            <Tab label={`All LTIs (${processedLTIData.length})`} />
+            <Tab label={`6+ Months (${dashboardStats.sixMonthsPlus})`} />
+            <Tab label={`Critical/High (${dashboardStats.criticalRisk + dashboardStats.highRisk})`} />
+            <Tab label={`MOC Required (${dashboardStats.mocRequired})`} />
+          </Tabs>
+
+          {filteredLTIs.length > 0 ? (
+            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow sx={{ '& th': { fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' } }}>
+                    <TableCell sx={{ color: 'white' }}>LTI ID</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Description</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Age</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Risk</TableCell>
+                    <TableCell sx={{ color: 'white' }}>MOC</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Parts</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Equipment</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Resolution</TableCell>
+                    <TableCell sx={{ color: 'white' }}>Details</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredLTIs.map((lti) => (
+                    <React.Fragment key={lti.id}>
+                      <TableRow
+                        hover
+                        onClick={() => toggleExpandLTI(lti.id)}
+                        sx={{
+                          cursor: 'pointer',
+                          bgcolor: lti.ageInfo.isSixMonthsPlus ? 'warning.lighter' : 'inherit',
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                      >
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <IconButton size="small" sx={{ mr: 0.5 }}>
+                              {expandedLTI === lti.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            </IconButton>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                              {lti.id}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {lti.description}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={lti.ageInfo.display}
+                            size="small"
+                            color={lti.ageInfo.isSixMonthsPlus ? (lti.ageInfo.days > 365 ? 'error' : 'warning') : 'default'}
+                            variant={lti.ageInfo.isSixMonthsPlus ? 'filled' : 'outlined'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={lti.riskLevel}
+                            size="small"
+                            color={getRiskColor(lti.riskLevel)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {getStatusIcon(lti.mocStatus)}
+                            <Typography variant="caption">
+                              {lti.mocRequired === 'Yes' ? lti.mocStatus : lti.mocRequired}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {getStatusIcon(lti.partsStatus)}
+                            <Typography variant="caption">
+                              {lti.partsRequired === 'Yes' ? lti.partsStatus : lti.partsRequired}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption">
+                            {lti.equipmentIssues || 'N/A'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption">
+                            {lti.plannedResolutionDate ? new Date(lti.plannedResolutionDate).toLocaleDateString() : 'Not Set'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title="View Full Details">
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleViewDetails(lti); }}>
+                              <ViewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded Details Row */}
+                      <TableRow>
+                        <TableCell colSpan={9} sx={{ p: 0, borderBottom: expandedLTI === lti.id ? 1 : 0 }}>
+                          <Collapse in={expandedLTI === lti.id} timeout="auto" unmountOnExit>
+                            <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
+                              <Grid container spacing={2}>
+                                {/* Basic Info */}
+                                <Grid item xs={12} md={4}>
+                                  <Typography variant="subtitle2" color="primary" gutterBottom>Basic Information</Typography>
+                                  <Typography variant="body2"><strong>System/Equipment:</strong> {lti.systemEquipment || 'N/A'}</Typography>
+                                  <Typography variant="body2"><strong>Start Date:</strong> {lti.plannedStartDate ? new Date(lti.plannedStartDate).toLocaleDateString() : 'N/A'}</Typography>
+                                  <Typography variant="body2"><strong>Business Impact:</strong> {lti.businessImpact}</Typography>
+                                  <Typography variant="body2"><strong>Action Required:</strong> {lti.actionRequired}</Typography>
+                                </Grid>
+
+                                {/* MOC Details */}
+                                <Grid item xs={12} md={4}>
+                                  <Typography variant="subtitle2" color="primary" gutterBottom>MOC Information</Typography>
+                                  <Typography variant="body2"><strong>MOC Required:</strong> {lti.mocRequired}</Typography>
+                                  <Typography variant="body2"><strong>MOC Number:</strong> {lti.mocNumber || 'Not Assigned'}</Typography>
+                                  <Typography variant="body2"><strong>MOC Status:</strong> {lti.mocStatus}</Typography>
+                                </Grid>
+
+                                {/* Parts & Equipment */}
+                                <Grid item xs={12} md={4}>
+                                  <Typography variant="subtitle2" color="primary" gutterBottom>Parts & Equipment</Typography>
+                                  <Typography variant="body2"><strong>Parts Required:</strong> {lti.partsRequired}</Typography>
+                                  <Typography variant="body2"><strong>Parts Status:</strong> {lti.partsStatus}</Typography>
+                                  <Typography variant="body2"><strong>Parts Expected:</strong> {lti.partsExpectedDate ? new Date(lti.partsExpectedDate).toLocaleDateString() : 'N/A'}</Typography>
+                                  <Typography variant="body2"><strong>Equipment Disconnection:</strong> {lti.equipmentDisconnectionRequired}</Typography>
+                                  <Typography variant="body2"><strong>Equipment Removal:</strong> {lti.equipmentRemovalRequired}</Typography>
+                                </Grid>
+
+                                {/* WMS Risks */}
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="subtitle2" color="primary" gutterBottom>WMS Manual Risk Assessment</Typography>
+                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    <Chip size="small" label={`Corrosion: ${lti.corrosionRisk}`} color={lti.corrosionRisk === 'High' ? 'error' : lti.corrosionRisk === 'Medium' ? 'warning' : 'default'} variant="outlined" />
+                                    <Chip size="small" label={`Dead Legs: ${lti.deadLegsRisk}`} color={lti.deadLegsRisk === 'High' ? 'error' : lti.deadLegsRisk === 'Medium' ? 'warning' : 'default'} variant="outlined" />
+                                    <Chip size="small" label={`Automation Loss: ${lti.automationLossRisk}`} color={lti.automationLossRisk === 'High' ? 'error' : lti.automationLossRisk === 'Medium' ? 'warning' : 'default'} variant="outlined" />
+                                  </Box>
+                                </Grid>
+
+                                {/* Comments */}
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="subtitle2" color="primary" gutterBottom>Comments</Typography>
+                                  <Typography variant="body2" sx={{ fontStyle: lti.comments ? 'normal' : 'italic', color: lti.comments ? 'text.primary' : 'text.secondary' }}>
+                                    {lti.comments || 'No comments recorded'}
+                                  </Typography>
+                                </Grid>
+                              </Grid>
+                            </Box>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="info">
+              No LTIs found matching the selected filter.
+            </Alert>
+          )}
+
+          {/* Summary Stats for Current Filter */}
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Showing {filteredLTIs.length} LTIs
+              {ltiFilterTab === 1 && ' over 6 months old'}
+              {ltiFilterTab === 2 && ' with Critical or High risk'}
+              {ltiFilterTab === 3 && ' requiring MOC'}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Typography variant="caption">
+                Risk Distribution:
+                <Chip size="small" label={`Critical: ${filteredLTIs.filter(l => l.riskLevel === 'Critical').length}`} color="error" sx={{ ml: 0.5, height: 20 }} />
+                <Chip size="small" label={`High: ${filteredLTIs.filter(l => l.riskLevel === 'High').length}`} color="warning" sx={{ ml: 0.5, height: 20 }} />
+                <Chip size="small" label={`Medium: ${filteredLTIs.filter(l => l.riskLevel === 'Medium').length}`} color="info" sx={{ ml: 0.5, height: 20 }} />
+                <Chip size="small" label={`Low: ${filteredLTIs.filter(l => l.riskLevel === 'Low').length}`} color="success" sx={{ ml: 0.5, height: 20 }} />
+              </Typography>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
 
