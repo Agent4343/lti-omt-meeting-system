@@ -351,6 +351,46 @@ class SharePointDocumentStorage {
   }
 
   /**
+   * Get past meetings
+   */
+  async getPastMeetings() {
+    try {
+      const data = await this.readFile('past-meetings.json');
+      return data || [];
+    } catch (error) {
+      console.error('Error getting past meetings:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Save past meetings
+   */
+  async savePastMeetings(meetings) {
+    return await this.writeFile('past-meetings.json', meetings);
+  }
+
+  /**
+   * Get LTI Master List
+   */
+  async getLTIMasterList() {
+    try {
+      const data = await this.readFile('lti-master-list.json');
+      return data || [];
+    } catch (error) {
+      console.error('Error getting LTI master list:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Save LTI Master List
+   */
+  async saveLTIMasterList(items) {
+    return await this.writeFile('lti-master-list.json', items);
+  }
+
+  /**
    * Add a single attendee
    */
   async addAttendee(attendee) {
@@ -509,33 +549,64 @@ class SharePointDocumentStorage {
    */
   async syncFromLocalStorage() {
     try {
-      // Read from localStorage
+      console.log('📤 Starting SharePoint sync...');
+
+      // Read from localStorage - ALL data sources
       const localMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
+      const localPastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
       const localPeople = JSON.parse(localStorage.getItem('savedPeople') || '[]');
+      const localMeetingPeople = JSON.parse(localStorage.getItem('meetingPeople') || '[]');
+      const localLTIMasterList = JSON.parse(localStorage.getItem('ltiMasterList') || '[]');
       const localCurrentMeeting = JSON.parse(localStorage.getItem('currentMeetingInfo') || 'null');
       const localIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations') || '[]');
       const localResponses = JSON.parse(localStorage.getItem('currentMeetingResponses') || '{}');
 
+      console.log('📦 Local data to sync:', {
+        savedMeetings: localMeetings.length,
+        pastMeetings: localPastMeetings.length,
+        savedPeople: localPeople.length,
+        meetingPeople: localMeetingPeople.length,
+        ltiMasterList: localLTIMasterList.length,
+        currentIsolations: localIsolations.length,
+        currentResponses: Object.keys(localResponses).length
+      });
+
       // Merge with SharePoint data
-      const [spMeetings, spPeople] = await Promise.all([
+      const [spMeetings, spPastMeetings, spPeople, spLTIMasterList] = await Promise.all([
         this.getMeetings(),
-        this.getAttendees()
+        this.getPastMeetings(),
+        this.getAttendees(),
+        this.getLTIMasterList()
       ]);
 
-      // Combine meetings (avoid duplicates by timestamp)
+      // Combine saved meetings (avoid duplicates by timestamp or id)
       const allMeetings = [...spMeetings];
       for (const localMeeting of localMeetings) {
-        const exists = spMeetings.some(m => m.timestamp === localMeeting.timestamp);
+        const exists = spMeetings.some(m =>
+          m.timestamp === localMeeting.timestamp || m.id === localMeeting.id
+        );
         if (!exists) {
           allMeetings.push(localMeeting);
         }
       }
 
+      // Combine past meetings (avoid duplicates by timestamp or id)
+      const allPastMeetings = [...spPastMeetings];
+      for (const localMeeting of localPastMeetings) {
+        const exists = spPastMeetings.some(m =>
+          m.timestamp === localMeeting.timestamp || m.id === localMeeting.id
+        );
+        if (!exists) {
+          allPastMeetings.push(localMeeting);
+        }
+      }
+
       // Combine attendees (avoid duplicates by name)
       const allPeople = [...spPeople];
-      for (const localPerson of localPeople) {
+      const combinedLocalPeople = [...localPeople, ...localMeetingPeople];
+      for (const localPerson of combinedLocalPeople) {
         const name = typeof localPerson === 'string' ? localPerson : localPerson.name;
-        const exists = spPeople.some(p =>
+        const exists = allPeople.some(p =>
           (typeof p === 'string' ? p : p.name) === name
         );
         if (!exists) {
@@ -543,23 +614,59 @@ class SharePointDocumentStorage {
         }
       }
 
+      // Combine LTI Master List (avoid duplicates by id)
+      const allLTIMasterList = [...spLTIMasterList];
+      for (const localItem of localLTIMasterList) {
+        const itemId = localItem.id || localItem.ID || localItem['LTI Number'];
+        const exists = spLTIMasterList.some(item =>
+          (item.id || item.ID || item['LTI Number']) === itemId
+        );
+        if (!exists) {
+          allLTIMasterList.push(localItem);
+        }
+      }
+
+      console.log('📊 Merged data totals:', {
+        meetings: allMeetings.length,
+        pastMeetings: allPastMeetings.length,
+        people: allPeople.length,
+        ltiMasterList: allLTIMasterList.length
+      });
+
       // Save merged data
-      await Promise.all([
+      const savePromises = [
         this.saveMeetings(allMeetings),
+        this.savePastMeetings(allPastMeetings),
         this.saveAttendees(allPeople),
-        localCurrentMeeting && this.saveCurrentMeeting(localCurrentMeeting),
-        localIsolations.length && this.saveIsolations(localIsolations),
-        Object.keys(localResponses).length && this.saveResponses(localResponses)
-      ]);
+        this.saveLTIMasterList(allLTIMasterList)
+      ];
+
+      // Only save current meeting data if it exists
+      if (localCurrentMeeting) {
+        savePromises.push(this.saveCurrentMeeting(localCurrentMeeting));
+      }
+      if (localIsolations.length > 0) {
+        savePromises.push(this.saveIsolations(localIsolations));
+      }
+      if (Object.keys(localResponses).length > 0) {
+        savePromises.push(this.saveResponses(localResponses));
+      }
+
+      await Promise.all(savePromises);
+
+      console.log('✅ SharePoint sync complete!');
 
       return {
         success: true,
         synced: {
           meetings: allMeetings.length,
-          attendees: allPeople.length
+          pastMeetings: allPastMeetings.length,
+          attendees: allPeople.length,
+          ltiMasterList: allLTIMasterList.length
         }
       };
     } catch (error) {
+      console.error('❌ SharePoint sync error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -569,16 +676,30 @@ class SharePointDocumentStorage {
    */
   async syncToLocalStorage() {
     try {
-      const [meetings, attendees, currentMeeting, isolations, responses] = await Promise.all([
+      console.log('📥 Loading data from SharePoint...');
+
+      const [meetings, pastMeetings, attendees, ltiMasterList, currentMeeting, isolations, responses] = await Promise.all([
         this.getMeetings(),
+        this.getPastMeetings(),
         this.getAttendees(),
+        this.getLTIMasterList(),
         this.getCurrentMeeting(),
         this.getIsolations(),
         this.getResponses()
       ]);
 
+      console.log('📦 SharePoint data loaded:', {
+        meetings: meetings.length,
+        pastMeetings: pastMeetings.length,
+        attendees: attendees.length,
+        ltiMasterList: ltiMasterList.length
+      });
+
+      // Save to localStorage
       localStorage.setItem('savedMeetings', JSON.stringify(meetings));
+      localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
       localStorage.setItem('savedPeople', JSON.stringify(attendees));
+      localStorage.setItem('ltiMasterList', JSON.stringify(ltiMasterList));
 
       if (currentMeeting) {
         localStorage.setItem('currentMeetingInfo', JSON.stringify(currentMeeting));
@@ -590,14 +711,19 @@ class SharePointDocumentStorage {
         localStorage.setItem('currentMeetingResponses', JSON.stringify(responses));
       }
 
+      console.log('✅ localStorage updated from SharePoint');
+
       return {
         success: true,
         synced: {
           meetings: meetings.length,
-          attendees: attendees.length
+          pastMeetings: pastMeetings.length,
+          attendees: attendees.length,
+          ltiMasterList: ltiMasterList.length
         }
       };
     } catch (error) {
+      console.error('❌ Error loading from SharePoint:', error);
       return { success: false, error: error.message };
     }
   }
