@@ -37,14 +37,31 @@ export const AppContextProvider = ({ children }) => {
       try {
         // Update storage status
         const syncStatus = hybridStorageProvider.getSyncStatus();
+        const isSharePointAvailable = hybridStorageProvider.isSharePointEnabled();
+
         setStorageStatus({
           mode: hybridStorageProvider.getStorageMode(),
-          sharePointAvailable: hybridStorageProvider.isSharePointEnabled(),
+          sharePointAvailable: isSharePointAvailable,
           pendingSync: syncStatus.pendingCount,
           lastSync: syncStatus.lastSync
         });
 
-        // Load data from HybridStorageProvider (SharePoint or localStorage)
+        // If SharePoint is available, auto-load data from SharePoint first
+        if (isSharePointAvailable) {
+          console.log('📥 SharePoint detected - Loading data from SharePoint...');
+          try {
+            const refreshResult = await hybridStorageProvider.refreshFromSharePoint();
+            if (refreshResult.success) {
+              console.log('✅ Data loaded from SharePoint:', refreshResult);
+            } else {
+              console.log('⚠️ SharePoint refresh failed, using localStorage:', refreshResult.error);
+            }
+          } catch (spError) {
+            console.log('⚠️ SharePoint load error, using localStorage:', spError.message);
+          }
+        }
+
+        // Load data from HybridStorageProvider (now updated from SharePoint if available)
         const [loadedPeople, loadedMeetings] = await Promise.all([
           hybridStorageProvider.getPeople(),
           hybridStorageProvider.getMeetings()
