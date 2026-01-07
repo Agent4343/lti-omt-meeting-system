@@ -29,7 +29,10 @@ import {
   Tabs,
   Tab,
   Collapse,
-  LinearProgress
+  LinearProgress,
+  TextField,
+  InputAdornment,
+  TableSortLabel
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -47,7 +50,10 @@ import {
   ExpandLess as ExpandLessIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
-  HourglassEmpty as PendingIcon
+  HourglassEmpty as PendingIcon,
+  Search as SearchIcon,
+  TableChart as ExcelIcon,
+  PieChart as ChartIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
 import { exportAssetManagerReport } from '../utils/pdfExport';
@@ -61,6 +67,8 @@ const AssetManagerDashboard = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [ltiFilterTab, setLtiFilterTab] = useState(0); // 0=All, 1=6+Months, 2=Critical/High, 3=MOC Required
   const [expandedLTI, setExpandedLTI] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState({ field: 'ageInfo', direction: 'desc' }); // Default sort by age descending
 
   // Load meetings data from multiple localStorage sources
   useEffect(() => {
@@ -620,21 +628,157 @@ const AssetManagerDashboard = () => {
     return <PendingIcon sx={{ fontSize: 16, color: 'grey.500' }} />;
   };
 
-  // Filter LTIs based on selected tab
+  // Filter LTIs based on selected tab and search query
   const getFilteredLTIs = () => {
+    let filtered = processedLTIData;
+
+    // Apply tab filter
     switch (ltiFilterTab) {
       case 1: // 6+ Months
-        return processedLTIData.filter(lti => lti.ageInfo.isSixMonthsPlus);
+        filtered = filtered.filter(lti => lti.ageInfo.isSixMonthsPlus);
+        break;
       case 2: // Critical/High Risk
-        return processedLTIData.filter(lti => lti.riskLevel === 'Critical' || lti.riskLevel === 'High');
+        filtered = filtered.filter(lti => lti.riskLevel === 'Critical' || lti.riskLevel === 'High');
+        break;
       case 3: // MOC Required
-        return processedLTIData.filter(lti => lti.mocRequired === 'Yes');
+        filtered = filtered.filter(lti => lti.mocRequired === 'Yes');
+        break;
       default: // All
-        return processedLTIData;
+        break;
     }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(lti =>
+        (lti.id && lti.id.toLowerCase().includes(query)) ||
+        (lti.description && lti.description.toLowerCase().includes(query)) ||
+        (lti.systemEquipment && lti.systemEquipment.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
   };
 
-  const filteredLTIs = getFilteredLTIs();
+  // Sort LTIs
+  const sortLTIs = (ltis) => {
+    if (!sortConfig.field) return ltis;
+
+    return [...ltis].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortConfig.field) {
+        case 'id':
+          aValue = a.id || '';
+          bValue = b.id || '';
+          break;
+        case 'description':
+          aValue = a.description || '';
+          bValue = b.description || '';
+          break;
+        case 'ageInfo':
+          aValue = a.ageInfo?.days || 0;
+          bValue = b.ageInfo?.days || 0;
+          break;
+        case 'riskLevel':
+          const riskOrder = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1, 'N/A': 0 };
+          aValue = riskOrder[a.riskLevel] || 0;
+          bValue = riskOrder[b.riskLevel] || 0;
+          break;
+        case 'mocStatus':
+          aValue = a.mocStatus || '';
+          bValue = b.mocStatus || '';
+          break;
+        case 'partsStatus':
+          aValue = a.partsStatus || '';
+          bValue = b.partsStatus || '';
+          break;
+        default:
+          aValue = a[sortConfig.field] || '';
+          bValue = b[sortConfig.field] || '';
+      }
+
+      if (typeof aValue === 'string') {
+        return sortConfig.direction === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+  };
+
+  const handleSort = (field) => {
+    setSortConfig(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const filteredLTIs = sortLTIs(getFilteredLTIs());
+
+  // Export to Excel (CSV format)
+  const handleExportExcel = () => {
+    try {
+      const headers = [
+        'LTI ID', 'Description', 'System/Equipment', 'Age (Days)', 'Age Display',
+        'Risk Level', 'Business Impact', 'MOC Required', 'MOC Number', 'MOC Status',
+        'Parts Required', 'Parts Status', 'Parts Expected Date',
+        'Equipment Disconnection', 'Equipment Removal', 'Planned Resolution',
+        'Action Required', 'Corrosion Risk', 'Dead Legs Risk', 'Automation Loss Risk', 'Comments'
+      ];
+
+      const rows = filteredLTIs.map(lti => [
+        lti.id,
+        lti.description,
+        lti.systemEquipment,
+        lti.ageInfo?.days || '',
+        lti.ageInfo?.display || '',
+        lti.riskLevel,
+        lti.businessImpact,
+        lti.mocRequired,
+        lti.mocNumber,
+        lti.mocStatus,
+        lti.partsRequired,
+        lti.partsStatus,
+        lti.partsExpectedDate,
+        lti.equipmentDisconnectionRequired,
+        lti.equipmentRemovalRequired,
+        lti.plannedResolutionDate,
+        lti.actionRequired,
+        lti.corrosionRisk,
+        lti.deadLegsRisk,
+        lti.automationLossRisk,
+        lti.comments
+      ]);
+
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `LTI_Report_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+
+      setSnackbar({
+        open: true,
+        message: `Exported ${filteredLTIs.length} LTIs to Excel (CSV)`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Excel export error:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to export to Excel',
+        severity: 'error'
+      });
+    }
+  };
 
   const handleViewDetails = (lti) => {
     setSelectedLTI(lti);
@@ -912,17 +1056,146 @@ const AssetManagerDashboard = () => {
             <Tab label={`MOC Required (${dashboardStats.mocRequired})`} />
           </Tabs>
 
+          {/* Search and Export Controls */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              size="small"
+              placeholder="Search LTI ID, description, or equipment..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{ minWidth: 300 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                startIcon={<ExcelIcon />}
+                onClick={handleExportExcel}
+                size="small"
+              >
+                Export to Excel
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<PdfIcon />}
+                onClick={handleExportReport}
+                size="small"
+              >
+                Export PDF
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Risk Distribution Mini Chart */}
+          <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+              <ChartIcon sx={{ mr: 1, fontSize: 18 }} />
+              Risk Distribution
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {[
+                { label: 'Critical', count: filteredLTIs.filter(l => l.riskLevel === 'Critical').length, color: '#d32f2f', total: filteredLTIs.length },
+                { label: 'High', count: filteredLTIs.filter(l => l.riskLevel === 'High').length, color: '#ed6c02', total: filteredLTIs.length },
+                { label: 'Medium', count: filteredLTIs.filter(l => l.riskLevel === 'Medium').length, color: '#0288d1', total: filteredLTIs.length },
+                { label: 'Low', count: filteredLTIs.filter(l => l.riskLevel === 'Low').length, color: '#2e7d32', total: filteredLTIs.length },
+                { label: 'N/A', count: filteredLTIs.filter(l => !l.riskLevel || l.riskLevel === 'N/A').length, color: '#9e9e9e', total: filteredLTIs.length }
+              ].map(item => (
+                <Tooltip key={item.label} title={`${item.label}: ${item.count} (${item.total > 0 ? Math.round(item.count / item.total * 100) : 0}%)`}>
+                  <Box sx={{ textAlign: 'center', flex: item.count > 0 ? item.count : 0.5, minWidth: 40 }}>
+                    <Box
+                      sx={{
+                        height: 24,
+                        bgcolor: item.color,
+                        borderRadius: 0.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        opacity: item.count > 0 ? 1 : 0.3
+                      }}
+                    >
+                      {item.count > 0 ? item.count : ''}
+                    </Box>
+                    <Typography variant="caption" sx={{ fontSize: 10 }}>{item.label}</Typography>
+                  </Box>
+                </Tooltip>
+              ))}
+            </Box>
+          </Box>
+
           {filteredLTIs.length > 0 ? (
             <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
               <Table stickyHeader size="small">
                 <TableHead>
-                  <TableRow sx={{ '& th': { fontWeight: 'bold', bgcolor: 'primary.main', color: 'white' } }}>
-                    <TableCell sx={{ color: 'white' }}>LTI ID</TableCell>
-                    <TableCell sx={{ color: 'white' }}>Description</TableCell>
-                    <TableCell sx={{ color: 'white' }}>Age</TableCell>
-                    <TableCell sx={{ color: 'white' }}>Risk</TableCell>
-                    <TableCell sx={{ color: 'white' }}>MOC</TableCell>
-                    <TableCell sx={{ color: 'white' }}>Parts</TableCell>
+                  <TableRow sx={{ '& th': { fontWeight: 'bold', bgcolor: 'primary.main' } }}>
+                    <TableCell sx={{ color: 'white' }}>
+                      <TableSortLabel
+                        active={sortConfig.field === 'id'}
+                        direction={sortConfig.field === 'id' ? sortConfig.direction : 'asc'}
+                        onClick={() => handleSort('id')}
+                        sx={{ color: 'white', '&.MuiTableSortLabel-root:hover': { color: 'white' }, '&.Mui-active': { color: 'white' }, '& .MuiTableSortLabel-icon': { color: 'white !important' } }}
+                      >
+                        LTI ID
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: 'white' }}>
+                      <TableSortLabel
+                        active={sortConfig.field === 'description'}
+                        direction={sortConfig.field === 'description' ? sortConfig.direction : 'asc'}
+                        onClick={() => handleSort('description')}
+                        sx={{ color: 'white', '&.MuiTableSortLabel-root:hover': { color: 'white' }, '&.Mui-active': { color: 'white' }, '& .MuiTableSortLabel-icon': { color: 'white !important' } }}
+                      >
+                        Description
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: 'white' }}>
+                      <TableSortLabel
+                        active={sortConfig.field === 'ageInfo'}
+                        direction={sortConfig.field === 'ageInfo' ? sortConfig.direction : 'asc'}
+                        onClick={() => handleSort('ageInfo')}
+                        sx={{ color: 'white', '&.MuiTableSortLabel-root:hover': { color: 'white' }, '&.Mui-active': { color: 'white' }, '& .MuiTableSortLabel-icon': { color: 'white !important' } }}
+                      >
+                        Age
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: 'white' }}>
+                      <TableSortLabel
+                        active={sortConfig.field === 'riskLevel'}
+                        direction={sortConfig.field === 'riskLevel' ? sortConfig.direction : 'asc'}
+                        onClick={() => handleSort('riskLevel')}
+                        sx={{ color: 'white', '&.MuiTableSortLabel-root:hover': { color: 'white' }, '&.Mui-active': { color: 'white' }, '& .MuiTableSortLabel-icon': { color: 'white !important' } }}
+                      >
+                        Risk
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: 'white' }}>
+                      <TableSortLabel
+                        active={sortConfig.field === 'mocStatus'}
+                        direction={sortConfig.field === 'mocStatus' ? sortConfig.direction : 'asc'}
+                        onClick={() => handleSort('mocStatus')}
+                        sx={{ color: 'white', '&.MuiTableSortLabel-root:hover': { color: 'white' }, '&.Mui-active': { color: 'white' }, '& .MuiTableSortLabel-icon': { color: 'white !important' } }}
+                      >
+                        MOC
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: 'white' }}>
+                      <TableSortLabel
+                        active={sortConfig.field === 'partsStatus'}
+                        direction={sortConfig.field === 'partsStatus' ? sortConfig.direction : 'asc'}
+                        onClick={() => handleSort('partsStatus')}
+                        sx={{ color: 'white', '&.MuiTableSortLabel-root:hover': { color: 'white' }, '&.Mui-active': { color: 'white' }, '& .MuiTableSortLabel-icon': { color: 'white !important' } }}
+                      >
+                        Parts
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell sx={{ color: 'white' }}>Equipment</TableCell>
                     <TableCell sx={{ color: 'white' }}>Resolution</TableCell>
                     <TableCell sx={{ color: 'white' }}>Details</TableCell>
