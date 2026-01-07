@@ -1,1 +1,108 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="X-UA-Compatible" content="ie=edge"/><title>LTI Meeting Management System</title><script defer="defer" src="./static/js/main.bf5179f1.js"></script></head><body><div id="root"></div></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+  <title>LTI Meeting Management System</title>
+  <script defer="defer" src="./static/js/main.bf5179f1.js"></script>
+  <style>
+    .edge-warning {
+      background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      font-size: 14px;
+      display: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .edge-warning.show {
+      display: block;
+    }
+    .edge-warning strong {
+      font-size: 16px;
+    }
+    .edge-warning .url-box {
+      background: rgba(255,255,255,0.2);
+      padding: 8px 15px;
+      border-radius: 4px;
+      margin: 10px auto;
+      max-width: 600px;
+      word-break: break-all;
+      font-family: monospace;
+      cursor: pointer;
+    }
+    .edge-warning .url-box:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    .edge-warning button {
+      background: white;
+      color: #f57c00;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    .edge-warning button:hover {
+      background: #fff3e0;
+    }
+    .edge-warning .dismiss {
+      background: transparent;
+      color: white;
+      border: 1px solid white;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="edge-warning" class="edge-warning">
+    <strong>For best experience, please use Google Chrome</strong>
+    <p>Click the URL below to copy it, then paste in Google Chrome:</p>
+    <div class="url-box" onclick="copyUrl()" title="Click to copy URL">
+      <span id="current-url"></span>
+    </div>
+    <button onclick="copyUrl()">Copy URL</button>
+    <button class="dismiss" onclick="dismissWarning()">Continue in Edge</button>
+  </div>
+  <div id="root"></div>
+
+  <script>
+    // Detect Microsoft Edge browser
+    function isEdge() {
+      return navigator.userAgent.indexOf('Edg/') > -1 ||
+             navigator.userAgent.indexOf('Edge/') > -1;
+    }
+
+    // Show warning if Edge detected
+    if (isEdge() && !sessionStorage.getItem('edgeWarningDismissed')) {
+      document.getElementById('edge-warning').classList.add('show');
+      document.getElementById('current-url').textContent = window.location.href;
+    }
+
+    // Copy URL to clipboard
+    function copyUrl() {
+      navigator.clipboard.writeText(window.location.href).then(function() {
+        alert('URL copied! Paste it in Google Chrome.');
+      }).catch(function() {
+        // Fallback for older browsers
+        var textArea = document.createElement('textarea');
+        textArea.value = window.location.href;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('URL copied! Paste it in Google Chrome.');
+      });
+    }
+
+    // Dismiss warning for this session
+    function dismissWarning() {
+      document.getElementById('edge-warning').classList.remove('show');
+      sessionStorage.setItem('edgeWarningDismissed', 'true');
+    }
+  </script>
+</body>
+</html>
