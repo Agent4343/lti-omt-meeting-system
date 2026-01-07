@@ -579,25 +579,48 @@ class SharePointDocumentStorage {
         this.getLTIMasterList()
       ]);
 
-      // Combine saved meetings (avoid duplicates by timestamp or id)
-      const allMeetings = [...spMeetings];
+      // Combine saved meetings (avoid duplicates by timestamp, id, or date)
+      // Use local data as source of truth - replace SharePoint data with local if same date
+      const allMeetings = [];
+      const seenMeetingDates = new Set();
+
+      // First add all local meetings (they are more recent)
       for (const localMeeting of localMeetings) {
-        const exists = spMeetings.some(m =>
-          m.timestamp === localMeeting.timestamp || m.id === localMeeting.id
-        );
-        if (!exists) {
+        const meetingKey = localMeeting.date || localMeeting.timestamp;
+        if (!seenMeetingDates.has(meetingKey)) {
           allMeetings.push(localMeeting);
+          seenMeetingDates.add(meetingKey);
         }
       }
 
-      // Combine past meetings (avoid duplicates by timestamp or id)
-      const allPastMeetings = [...spPastMeetings];
+      // Then add SharePoint meetings that don't conflict
+      for (const spMeeting of spMeetings) {
+        const meetingKey = spMeeting.date || spMeeting.timestamp;
+        if (!seenMeetingDates.has(meetingKey)) {
+          allMeetings.push(spMeeting);
+          seenMeetingDates.add(meetingKey);
+        }
+      }
+
+      // Combine past meetings (avoid duplicates by date - local takes priority)
+      const allPastMeetings = [];
+      const seenPastMeetingDates = new Set();
+
+      // First add all local past meetings (they are more recent)
       for (const localMeeting of localPastMeetings) {
-        const exists = spPastMeetings.some(m =>
-          m.timestamp === localMeeting.timestamp || m.id === localMeeting.id
-        );
-        if (!exists) {
+        const meetingKey = localMeeting.date || localMeeting.timestamp;
+        if (!seenPastMeetingDates.has(meetingKey)) {
           allPastMeetings.push(localMeeting);
+          seenPastMeetingDates.add(meetingKey);
+        }
+      }
+
+      // Then add SharePoint past meetings that don't conflict
+      for (const spMeeting of spPastMeetings) {
+        const meetingKey = spMeeting.date || spMeeting.timestamp;
+        if (!seenPastMeetingDates.has(meetingKey)) {
+          allPastMeetings.push(spMeeting);
+          seenPastMeetingDates.add(meetingKey);
         }
       }
 

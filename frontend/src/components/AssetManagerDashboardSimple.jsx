@@ -24,7 +24,8 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider
+  Divider,
+  Snackbar
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -36,9 +37,11 @@ import {
   GetApp as DownloadIcon,
   Visibility as ViewIcon,
   CalendarToday as CalendarIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
+import { exportAssetManagerReport } from '../utils/pdfExport';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -46,6 +49,7 @@ const AssetManagerDashboard = () => {
   const [selectedLTI, setSelectedLTI] = useState(null);
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   // Load meetings data from multiple localStorage sources
   useEffect(() => {
@@ -68,22 +72,28 @@ const AssetManagerDashboard = () => {
           contextMeetings: meetings.length
         });
 
-        // Combine all meeting sources
+        // Combine all meeting sources - use pastMeetings as primary source
         let allMeetings = [];
+        const seenDates = new Set();
 
-        // Add saved meetings that have proper isolations/responses structure
-        savedMeetings.forEach(meeting => {
-          if (meeting.isolations && meeting.responses) {
-            allMeetings.push(meeting);
+        // Add past meetings first (primary source)
+        pastMeetings.forEach(meeting => {
+          if (meeting.isolations) {
+            const meetingKey = meeting.date || meeting.id;
+            if (!seenDates.has(meetingKey)) {
+              allMeetings.push(meeting);
+              seenDates.add(meetingKey);
+            }
           }
         });
 
-        // Add past meetings
-        pastMeetings.forEach(meeting => {
-          if (meeting.isolations && meeting.responses) {
-            // Check for duplicates by ID
-            if (!allMeetings.some(m => m.id === meeting.id)) {
+        // Add saved meetings that aren't already in pastMeetings
+        savedMeetings.forEach(meeting => {
+          if (meeting.isolations) {
+            const meetingKey = meeting.date || meeting.id;
+            if (!seenDates.has(meetingKey)) {
               allMeetings.push(meeting);
+              seenDates.add(meetingKey);
             }
           }
         });
@@ -575,6 +585,35 @@ const AssetManagerDashboard = () => {
     setAgendaDialogOpen(true);
   };
 
+  // Export Asset Manager Report
+  const handleExportReport = () => {
+    const reportData = {
+      period: 'All Time',
+      totalLTIs: dashboardStats.totalLTIs,
+      allLTIs: processedLTIData,
+      sixMonthsPlusLTIs: dashboardStats.sixMonthsPlusLTIs,
+      stats: {
+        totalLTIs: dashboardStats.totalLTIs,
+        sixMonthsPlus: dashboardStats.sixMonthsPlus,
+        criticalRisk: dashboardStats.criticalRisk,
+        mocRequired: dashboardStats.mocRequired,
+        riskDistribution: {
+          critical: dashboardStats.criticalRisk,
+          high: dashboardStats.highRisk,
+          medium: processedLTIData.filter(lti => lti.riskLevel === 'Medium').length,
+          low: processedLTIData.filter(lti => lti.riskLevel === 'Low').length
+        }
+      }
+    };
+
+    const result = exportAssetManagerReport(reportData);
+    setSnackbar({
+      open: true,
+      message: result.message,
+      severity: result.success ? 'success' : 'error'
+    });
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Debug Info */}
@@ -587,13 +626,36 @@ const AssetManagerDashboard = () => {
 
       {/* Page Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <BusinessIcon sx={{ mr: 2, color: 'primary.main', fontSize: 40 }} />
-          Asset Manager Dashboard
-        </Typography>
-        
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+          <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center' }}>
+            <BusinessIcon sx={{ mr: 2, color: 'primary.main', fontSize: 40 }} />
+            Asset Manager Dashboard
+          </Typography>
+
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PdfIcon />}
+              onClick={handleExportReport}
+              disabled={processedLTIData.length === 0}
+            >
+              Export Report
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<CalendarIcon />}
+              onClick={generateMeetingAgenda}
+              disabled={dashboardStats.sixMonthsPlus === 0}
+            >
+              Generate Agenda
+            </Button>
+          </Box>
+        </Box>
+
         <Alert severity="warning" sx={{ mb: 3 }}>
-          <strong>WMS Manual Requirement:</strong> LTIs over 6 months require Asset Manager review every 6 months. 
+          <strong>WMS Manual Requirement:</strong> LTIs over 6 months require Asset Manager review every 6 months.
           This dashboard tracks {dashboardStats.sixMonthsPlus} LTIs requiring management attention.
         </Alert>
       </Box>
@@ -1008,6 +1070,22 @@ const AssetManagerDashboard = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for feedback */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

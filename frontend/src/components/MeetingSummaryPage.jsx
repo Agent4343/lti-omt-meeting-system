@@ -194,13 +194,16 @@ function MeetingSummaryPage() {
       timestamp: new Date().toISOString(),
       statistics: statistics
     };
-    pastMeetings.push(newMeeting);
-    localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
 
-    // Also save to savedMeetings for Asset Manager Dashboard
-    const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
-    savedMeetings.push(newMeeting);
-    localStorage.setItem('savedMeetings', JSON.stringify(savedMeetings));
+    // Check if meeting with same date already exists (avoid duplicates)
+    const existingIndex = pastMeetings.findIndex(m => m.date === newMeeting.date);
+    if (existingIndex >= 0) {
+      // Update existing meeting instead of adding duplicate
+      pastMeetings[existingIndex] = newMeeting;
+    } else {
+      pastMeetings.push(newMeeting);
+    }
+    localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
 
     // Store current meeting responses as previous meeting responses for next meeting
     localStorage.setItem('previousMeetingResponses', JSON.stringify(responses));

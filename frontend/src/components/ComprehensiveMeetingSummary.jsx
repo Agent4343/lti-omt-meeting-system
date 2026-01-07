@@ -231,13 +231,16 @@ function ComprehensiveMeetingSummary() {
       meetingData: meetingData,
       version: '4.0' // Updated version to indicate enhanced data structure
     };
-    pastMeetings.push(meeting);
-    localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
 
-    // Also save to savedMeetings for Asset Manager Dashboard
-    const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
-    savedMeetings.push(meeting);
-    localStorage.setItem('savedMeetings', JSON.stringify(savedMeetings));
+    // Check if meeting with same date already exists (avoid duplicates)
+    const existingIndex = pastMeetings.findIndex(m => m.date === meeting.date);
+    if (existingIndex >= 0) {
+      // Update existing meeting instead of adding duplicate
+      pastMeetings[existingIndex] = meeting;
+    } else {
+      pastMeetings.push(meeting);
+    }
+    localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
 
     // Store current meeting responses as previous meeting responses for next meeting
     localStorage.setItem('previousMeetingResponses', JSON.stringify(responses));
