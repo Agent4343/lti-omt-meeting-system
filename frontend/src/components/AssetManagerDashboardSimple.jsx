@@ -68,22 +68,28 @@ const AssetManagerDashboard = () => {
           contextMeetings: meetings.length
         });
 
-        // Combine all meeting sources
+        // Combine all meeting sources - use pastMeetings as primary source
         let allMeetings = [];
+        const seenDates = new Set();
 
-        // Add saved meetings that have proper isolations/responses structure
-        savedMeetings.forEach(meeting => {
-          if (meeting.isolations && meeting.responses) {
-            allMeetings.push(meeting);
+        // Add past meetings first (primary source)
+        pastMeetings.forEach(meeting => {
+          if (meeting.isolations) {
+            const meetingKey = meeting.date || meeting.id;
+            if (!seenDates.has(meetingKey)) {
+              allMeetings.push(meeting);
+              seenDates.add(meetingKey);
+            }
           }
         });
 
-        // Add past meetings
-        pastMeetings.forEach(meeting => {
-          if (meeting.isolations && meeting.responses) {
-            // Check for duplicates by ID
-            if (!allMeetings.some(m => m.id === meeting.id)) {
+        // Add saved meetings that aren't already in pastMeetings
+        savedMeetings.forEach(meeting => {
+          if (meeting.isolations) {
+            const meetingKey = meeting.date || meeting.id;
+            if (!seenDates.has(meetingKey)) {
               allMeetings.push(meeting);
+              seenDates.add(meetingKey);
             }
           }
         });
