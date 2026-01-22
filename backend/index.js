@@ -11,7 +11,36 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
-app.use(helmet());
+//
+// IMPORTANT (SharePoint embedding):
+// - Default Helmet enables X-Frame-Options which blocks embedding in classic SharePoint pages/App Parts.
+// - We disable frameguard and instead rely on CSP frame-ancestors when SHAREPOINT_SITE_URL is provided.
+const getOriginFromUrl = (maybeUrl) => {
+  if (!maybeUrl || typeof maybeUrl !== 'string') return '';
+  try {
+    // If a full URL was provided (e.g. https://server/sites/foo), reduce to origin (https://server)
+    return new URL(maybeUrl).origin;
+  } catch {
+    // If an origin was provided already, just return it (best-effort).
+    return maybeUrl;
+  }
+};
+
+const sharepointSiteUrl = process.env.SHAREPOINT_SITE_URL || '';
+const sharepointOrigin = getOriginFromUrl(sharepointSiteUrl);
+const frameAncestors = ["'self'"];
+if (sharepointOrigin) frameAncestors.push(sharepointOrigin);
+
+app.use(helmet({
+  frameguard: false,
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      // Allow SharePoint to host this app in an iframe (App Part/Page Viewer)
+      'frame-ancestors': frameAncestors
+    }
+  }
+}));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -42,6 +71,10 @@ const allowedOrigins = [
 // Add SharePoint URLs if in SharePoint mode
 if (process.env.SHAREPOINT_SITE_URL) {
   allowedOrigins.push(process.env.SHAREPOINT_SITE_URL);
+  const origin = getOriginFromUrl(process.env.SHAREPOINT_SITE_URL);
+  if (origin && origin !== process.env.SHAREPOINT_SITE_URL) {
+    allowedOrigins.push(origin);
+  }
 }
 
 app.use(cors({
