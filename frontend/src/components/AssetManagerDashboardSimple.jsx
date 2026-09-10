@@ -446,100 +446,104 @@ const AssetManagerDashboard = () => {
       </Box>
 
       {/* Key Metrics Dashboard */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: '#e3f2fd' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <DashboardIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-              <Typography variant="h3" color="primary.main">{dashboardStats.totalLTIs}</Typography>
-              <Typography variant="body2" color="text.secondary">Total LTIs</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: '#fff3e0' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <ScheduleIcon sx={{ fontSize: 40, color: 'warning.main', mb: 1 }} />
-              <Typography variant="h3" color="warning.main">{dashboardStats.sixMonthsPlus}</Typography>
-              <Typography variant="body2" color="text.secondary">6+ Months Old</Typography>
-              <Chip label="REQUIRES REVIEW" size="small" color="warning" sx={{ mt: 1 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: '#ffebee' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <ErrorIcon sx={{ fontSize: 40, color: 'error.main', mb: 1 }} />
-              <Typography variant="h3" color="error.main">{dashboardStats.criticalRisk}</Typography>
-              <Typography variant="body2" color="text.secondary">Critical Risk</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: '#e8f5e8' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <AssignmentIcon sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
-              <Typography variant="h3" color="success.main">{dashboardStats.mocRequired}</Typography>
-              <Typography variant="body2" color="text.secondary">MOCs Required</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Uniform cards on a plain surface: the previous pastel fills plus a
+          chip on only one card made the row look ragged and gave four metrics
+          equal visual weight regardless of whether anything was wrong. */}
+      <Grid container spacing={2} sx={{ mb: 4 }} alignItems="stretch">
+        {[
+          {
+            label: 'Total LTIs',
+            value: dashboardStats.totalLTIs,
+            icon: <DashboardIcon />,
+            tone: 'primary'
+          },
+          {
+            label: '6+ Months Old',
+            value: dashboardStats.sixMonthsPlus,
+            icon: <ScheduleIcon />,
+            tone: 'warning',
+            note: 'Requires review'
+          },
+          {
+            label: 'Critical Risk',
+            value: dashboardStats.criticalRisk,
+            icon: <ErrorIcon />,
+            tone: 'error'
+          },
+          {
+            label: 'MOCs Required',
+            value: dashboardStats.mocRequired,
+            icon: <AssignmentIcon />,
+            tone: 'success'
+          }
+        ].map(({ label, value, icon, tone, note }) => {
+          // Only draw attention to a metric that is actually non-zero.
+          const active = Number(value) > 0;
+          return (
+            <Grid item xs={12} sm={6} md={3} key={label}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, py: 2.5 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 38,
+                      height: 38,
+                      flexShrink: 0,
+                      borderRadius: 2,
+                      color: active ? `${tone}.main` : 'grey.400',
+                      bgcolor: active ? `${tone}.light` : 'grey.100'
+                    }}
+                  >
+                    {icon}
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h2" sx={{ lineHeight: 1.1 }}>
+                      {value}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" noWrap>
+                      {label}
+                    </Typography>
+                    {note && active && (
+                      <Typography variant="caption" sx={{ color: `${tone}.main`, fontWeight: 600 }}>
+                        {note}
+                      </Typography>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
 
-      {/* Action Buttons */}
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      {/* Action Buttons - one primary action, the rest are secondary so the
+          row reads as a hierarchy rather than five competing colours. */}
+      <Box sx={{ mb: 3, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
         <Button
           variant="contained"
           startIcon={<CalendarIcon />}
           onClick={generateMeetingAgenda}
           color="primary"
-          size="large"
         >
           Generate Meeting Agenda
         </Button>
-        
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={handleExportReport}
-          color="secondary"
-          size="large"
-        >
-          Export PDF
-        </Button>
 
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={handleExportCSV}
-          color="info"
-          size="large"
-        >
-          Export CSV
-        </Button>
-
-        <Button
-          variant="outlined"
-          startIcon={<EmailIcon />}
-          onClick={handleEmailReport}
-          color="secondary"
-          size="large"
-        >
-          Email Report
-        </Button>
-
-        <Button
-          variant="outlined"
-          startIcon={<CloudUploadIcon />}
-          onClick={handleSaveToSharePoint}
-          color="success"
-          size="large"
-        >
-          Save to SharePoint
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button variant="outlined" color="inherit" startIcon={<DownloadIcon />} onClick={handleExportReport}>
+            Export PDF
+          </Button>
+          <Button variant="outlined" color="inherit" startIcon={<DownloadIcon />} onClick={handleExportCSV}>
+            Export CSV
+          </Button>
+          <Button variant="outlined" color="inherit" startIcon={<EmailIcon />} onClick={handleEmailReport}>
+            Email Report
+          </Button>
+          <Button variant="outlined" color="inherit" startIcon={<CloudUploadIcon />} onClick={handleSaveToSharePoint}>
+            Save to SharePoint
+          </Button>
+        </Box>
       </Box>
 
       {/* 6+ Month LTIs Requiring Review */}

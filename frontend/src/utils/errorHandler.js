@@ -89,8 +89,11 @@ export class ErrorHandler {
       return 'SharePoint connection error. Please check your permissions and try again.';
     }
 
-    // Browser compatibility errors
-    if (error.message?.includes('not supported') || error.message?.includes('undefined')) {
+    // Browser compatibility errors.
+    // Deliberately does NOT match 'undefined': "Cannot read properties of
+    // undefined" is the most common ordinary bug in the app, and reporting it
+    // as a browser problem sends users chasing the wrong thing.
+    if (error.message?.includes('not supported')) {
       return 'This feature may not be supported in your browser. Please try using a modern browser like Chrome, Firefox, or Edge.';
     }
 

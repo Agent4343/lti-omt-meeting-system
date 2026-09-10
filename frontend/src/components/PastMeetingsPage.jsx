@@ -329,8 +329,19 @@ function PastMeetingsPage() {
     // Fallback to old calculation method for legacy meetings
     if (!meeting.responses) return null;
     
-    // If statistics are already calculated, use them
-    if (meeting.statistics) return meeting.statistics;
+    // If statistics are already calculated, use them - but fill in any missing
+    // buckets. Older records and hand-edited JSON can carry a partial
+    // statistics object, and the renderer reads stats.byRisk.High directly.
+    if (meeting.statistics) {
+      return {
+        total: 0,
+        ...meeting.statistics,
+        byRisk: { Critical: 0, High: 0, Medium: 0, Low: 0, ...(meeting.statistics.byRisk || {}) },
+        byParts: { Yes: 0, No: 0, ...(meeting.statistics.byParts || {}) },
+        byMOC: { Yes: 0, No: 0, ...(meeting.statistics.byMOC || {}) },
+        byEngineering: { Yes: 0, No: 0, ...(meeting.statistics.byEngineering || {}) }
+      };
+    }
     
     // Otherwise, calculate them using old structure
     const stats = {

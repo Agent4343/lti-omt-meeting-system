@@ -36,6 +36,19 @@ class ErrorBoundary extends React.Component {
     });
   }
 
+  componentDidMount() {
+    // The boundary sits outside the Router, so it cannot watch location
+    // directly. Without this, one page throwing leaves every other route
+    // showing the error screen until a manual reload.
+    window.addEventListener('hashchange', this.handleReset);
+    window.addEventListener('popstate', this.handleReset);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('hashchange', this.handleReset);
+    window.removeEventListener('popstate', this.handleReset);
+  }
+
   handleReload = () => {
     window.location.reload();
   };
@@ -45,6 +58,7 @@ class ErrorBoundary extends React.Component {
   };
 
   handleReset = () => {
+    if (!this.state.hasError) return;
     this.setState({ hasError: false, error: null, errorInfo: null, errorProps: null });
   };
 

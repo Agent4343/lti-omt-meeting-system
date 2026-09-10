@@ -45,18 +45,21 @@ function NavigationHeader() {
   const [syncing, setSyncing] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isCompact = useMediaQuery(theme.breakpoints.down('lg'));
 
   const { storageStatus, syncToSharePoint } = useAppContext();
 
+  // `primary` items stay inline on wide screens; the rest live in the drawer.
+  // All nine rendered inline overflowed the toolbar and wrapped onto three
+  // lines even at 1440px.
   const menuItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/' },
-    { text: 'New Meeting', icon: <AddIcon />, path: '/home' },
+    { text: 'New Meeting', icon: <AddIcon />, path: '/home', primary: true },
     { text: 'Manage People', icon: <PeopleIcon />, path: '/people' },
-    { text: 'Past Meetings', icon: <HistoryIcon />, path: '/past' },
-    { text: 'LTI Master List', icon: <ListAltIcon />, path: '/lti-master' },
+    { text: 'Past Meetings', icon: <HistoryIcon />, path: '/past', primary: true },
+    { text: 'LTI Master List', icon: <ListAltIcon />, path: '/lti-master', primary: true },
     { text: 'LTI Dashboard', icon: <DashboardIcon />, path: '/lti-dashboard' },
-    { text: 'Asset Manager', icon: <SupervisorAccountIcon />, path: '/asset-manager-dashboard' },
+    { text: 'Asset Manager', icon: <SupervisorAccountIcon />, path: '/asset-manager-dashboard', primary: true },
     { text: 'Removed LTIs', icon: <DeleteSweepIcon />, path: '/removed-ltis' },
     { text: 'Meeting Calendar', icon: <CalendarMonthIcon />, path: '/calendar' },
   ];
@@ -127,11 +130,11 @@ function NavigationHeader() {
               onClick={() => navigate(item.path)}
               selected={isActive(item.path)}
               sx={{
+                mx: 1,
+                borderRadius: 2,
                 '&.Mui-selected': {
-                  bgcolor: 'rgba(25, 118, 210, 0.08)',
-                  '&:hover': {
-                    bgcolor: 'rgba(25, 118, 210, 0.12)',
-                  },
+                  bgcolor: 'action.selected',
+                  '&:hover': { bgcolor: 'action.selected' },
                 },
               }}
             >
@@ -145,26 +148,25 @@ function NavigationHeader() {
   );
 
   return (
-    <AppBar position="static" sx={{ mb: 2 }}>
+    <AppBar position="sticky" sx={{ mb: 3 }}>
       <Container maxWidth="lg">
         <Toolbar disableGutters>
-          {isMobile && (
-            <IconButton
-              size="large"
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              sx={{ mr: 2 }}
-              onClick={toggleDrawer(true)}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-          
+          <IconButton
+            size="medium"
+            edge="start"
+            color="inherit"
+            aria-label="Open navigation menu"
+            sx={{ mr: 1.5 }}
+            onClick={toggleDrawer(true)}
+          >
+            <MenuIcon />
+          </IconButton>
+
           <Typography
-            variant="h6"
+            variant="h5"
             component="div"
-            sx={{ cursor: 'pointer', mr: 2 }}
+            noWrap
+            sx={{ cursor: 'pointer', mr: 2, fontWeight: 700, letterSpacing: '-0.01em' }}
             onClick={() => navigate('/')}
           >
             {APP_NAME}
@@ -192,19 +194,20 @@ function NavigationHeader() {
 
           <Box sx={{ flexGrow: 1 }} />
 
-          {!isMobile && (
-            <Box sx={{ display: 'flex' }}>
-              {menuItems.map((item) => (
+          {!isCompact && (
+            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+              {menuItems.filter(item => item.primary).map((item) => (
                 <Button
                   key={item.text}
-                  color="inherit"
+                  color={isActive(item.path) ? 'primary' : 'inherit'}
                   startIcon={item.icon}
                   onClick={() => navigate(item.path)}
-                  sx={{ 
-                    mx: 1,
-                    borderBottom: isActive(item.path) ? '2px solid white' : 'none',
-                    borderRadius: 0,
-                    paddingBottom: '4px'
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    fontWeight: isActive(item.path) ? 700 : 500,
+                    color: isActive(item.path) ? 'primary.main' : 'text.secondary',
+                    bgcolor: isActive(item.path) ? 'action.selected' : 'transparent',
+                    '&:hover': { bgcolor: 'action.hover', color: 'text.primary' }
                   }}
                 >
                   {item.text}
