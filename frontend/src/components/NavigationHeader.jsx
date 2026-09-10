@@ -9,6 +9,7 @@ import {
   Drawer,
   List,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Divider,
@@ -33,6 +34,7 @@ import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import CloudIcon from '@mui/icons-material/Cloud';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import CloudSyncIcon from '@mui/icons-material/CloudSync';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { APP_NAME, APP_VERSION } from '../config';
 import { useAppContext } from '../context/AppContext';
 
@@ -47,7 +49,7 @@ function NavigationHeader() {
 
   const { storageStatus, syncToSharePoint } = useAppContext();
 
-   const menuItems = [
+  const menuItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/' },
     { text: 'New Meeting', icon: <AddIcon />, path: '/home' },
     { text: 'Manage People', icon: <PeopleIcon />, path: '/people' },
@@ -55,6 +57,7 @@ function NavigationHeader() {
     { text: 'LTI Master List', icon: <ListAltIcon />, path: '/lti-master' },
     { text: 'LTI Dashboard', icon: <DashboardIcon />, path: '/lti-dashboard' },
     { text: 'Asset Manager', icon: <SupervisorAccountIcon />, path: '/asset-manager-dashboard' },
+    { text: 'Removed LTIs', icon: <DeleteSweepIcon />, path: '/removed-ltis' },
     { text: 'Meeting Calendar', icon: <CalendarMonthIcon />, path: '/calendar' },
   ];
 
@@ -119,22 +122,22 @@ function NavigationHeader() {
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem 
-            button 
-            key={item.text} 
-            onClick={() => navigate(item.path)}
-            selected={isActive(item.path)}
-            sx={{
-              '&.Mui-selected': {
-                bgcolor: 'rgba(25, 118, 210, 0.08)',
-                '&:hover': {
-                  bgcolor: 'rgba(25, 118, 210, 0.12)',
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              onClick={() => navigate(item.path)}
+              selected={isActive(item.path)}
+              sx={{
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(25, 118, 210, 0.08)',
+                  '&:hover': {
+                    bgcolor: 'rgba(25, 118, 210, 0.12)',
+                  },
                 },
-              },
-            }}
-          >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
           </ListItem>
         ))}
       </List>

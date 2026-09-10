@@ -155,9 +155,7 @@ const apiClient = new APIClient();
 
 export default apiClient;
 
-// Named exports for specific functions
-export const {
-  healthCheck,
-  sendEmail,
-  sendReminder
-} = apiClient;
+// Named exports for specific functions - bound to preserve 'this' context
+export const healthCheck = () => apiClient.healthCheck();
+export const sendEmail = (emailData) => apiClient.sendEmail(emailData);
+export const sendReminder = (reminderData) => apiClient.sendReminder(reminderData);

@@ -24,8 +24,7 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider,
-  Snackbar
+  Divider
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -38,10 +37,14 @@ import {
   Visibility as ViewIcon,
   CalendarToday as CalendarIcon,
   Error as ErrorIcon,
-  PictureAsPdf as PdfIcon
+  Email as EmailIcon,
+  CloudUpload as CloudUploadIcon
 } from '@mui/icons-material';
 import { useAppContext } from '../context/AppContext';
-import { exportAssetManagerReport } from '../utils/pdfExport';
+import { exportMeetingToPDF } from '../utils/pdfExport';
+import { calculateLTIAge } from '../utils/dateUtils';
+import { exportAssetManagerToCSV } from '../utils/csvExport';
+import { openEmailClient, generateAssetManagerReportEmail, downloadAsFile } from '../utils/emailUtils';
 
 const AssetManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -49,16 +52,15 @@ const AssetManagerDashboard = () => {
   const [selectedLTI, setSelectedLTI] = useState(null);
   const [agendaDialogOpen, setAgendaDialogOpen] = useState(false);
   const [localMeetings, setLocalMeetings] = useState([]);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   // Serialized snapshot of the last loaded data, so a refresh that finds
   // nothing new does not replace state with an equal-but-new array.
   const lastSnapshotRef = useRef(null);
 
-  // Load meetings data from multiple localStorage sources
+  // Load data from localStorage - combine savedMeetings AND pastMeetings
+  // Load meetings data from every localStorage source the app writes to.
   useEffect(() => {
     const loadMeetingsData = () => {
       try {
-        // Check multiple data sources
         const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
         const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
         const ltiMasterList = JSON.parse(localStorage.getItem('ltiMasterList') || '[]');
@@ -66,250 +68,154 @@ const AssetManagerDashboard = () => {
         const currentMeetingResponses = JSON.parse(localStorage.getItem('currentMeetingResponses') || '{}');
         const currentMeetingInfo = JSON.parse(localStorage.getItem('currentMeetingInfo') || 'null');
 
-        // Combine all meeting sources - use pastMeetings as primary source
-        let allMeetings = [];
+        const allMeetings = [];
         const seenMeetingKeys = new Set();
 
-        // Add past meetings first (primary source)
-        pastMeetings.forEach(meeting => {
-          if (meeting.isolations) {
-            const meetingKey = meeting.id || meeting.date;
-            if (!seenMeetingKeys.has(meetingKey)) {
-              allMeetings.push(meeting);
-              seenMeetingKeys.add(meetingKey);
-            }
-          }
-        });
+        // Identity is the meeting id, falling back to timestamp then date for
+        // records saved before ids were assigned.
+        const addMeeting = (meeting) => {
+          if (!meeting.isolations) return;
+          const meetingKey = meeting.id || meeting.timestamp || meeting.date;
+          if (meetingKey && seenMeetingKeys.has(meetingKey)) return;
+          allMeetings.push(meeting);
+          if (meetingKey) seenMeetingKeys.add(meetingKey);
+        };
 
-        // Add saved meetings that aren't already in pastMeetings
-        savedMeetings.forEach(meeting => {
-          if (meeting.isolations) {
-            const meetingKey = meeting.id || meeting.date;
-            if (!seenMeetingKeys.has(meetingKey)) {
-              allMeetings.push(meeting);
-              seenMeetingKeys.add(meetingKey);
-            }
-          }
-        });
+        // Finished meetings first - they are the primary source.
+        pastMeetings.forEach(addMeeting);
+        savedMeetings.forEach(addMeeting);
 
-        // If we have current meeting isolations but no meetings with proper structure,
-        // create a synthetic meeting from current data
+        // Surface the in-progress meeting so its LTIs are visible before it is
+        // finalized.
         if (currentMeetingIsolations.length > 0) {
           const currentMeetingId = currentMeetingInfo?.id || 'current-meeting';
-          const currentMeetingExists = allMeetings.some(m => m.id === currentMeetingId);
-
-          if (!currentMeetingExists) {
-            const syntheticMeeting = {
+          if (!allMeetings.some(m => m.id === currentMeetingId)) {
+            allMeetings.push({
               id: currentMeetingId,
               name: currentMeetingInfo?.name || 'Current Meeting',
               date: currentMeetingInfo?.date || new Date().toISOString().split('T')[0],
               isolations: currentMeetingIsolations,
               responses: currentMeetingResponses
-            };
-            allMeetings.push(syntheticMeeting);
+            });
           }
         }
 
-        // If we have an LTI Master List but no meetings, create a synthetic meeting
+        // Fall back to the master list when no meeting has been held yet.
         if (allMeetings.length === 0 && ltiMasterList.length > 0) {
-          const syntheticMeeting = {
+          allMeetings.push({
             id: 'master-list-meeting',
             name: 'LTI Master List Data',
             date: new Date().toISOString().split('T')[0],
             isolations: ltiMasterList,
             responses: currentMeetingResponses
-          };
-          allMeetings.push(syntheticMeeting);
+          });
         }
 
-        // Last resort: use context meetings
-        if (allMeetings.length === 0 && meetings.length > 0) {
-          allMeetings = meetings;
-        }
+        // Last resort: whatever the context already holds.
+        const resolved = allMeetings.length === 0 && meetings.length > 0
+          ? meetings
+          : allMeetings;
 
         // Only push new state when the data actually changed, otherwise every
         // refresh hands down a new array reference and re-runs the memo below.
-        const snapshot = JSON.stringify(allMeetings);
+        const snapshot = JSON.stringify(resolved);
         if (snapshot === lastSnapshotRef.current) return;
         lastSnapshotRef.current = snapshot;
 
-        const totalLTIs = allMeetings.reduce(
-          (sum, m) => sum + (m.isolations?.length || 0),
-          0
-        );
-        console.log(`📊 Asset Manager Dashboard: ${allMeetings.length} meetings, ${totalLTIs} LTIs`);
+        const totalLTIs = resolved.reduce((sum, m) => sum + (m.isolations?.length || 0), 0);
+        console.log(`📊 Asset Manager Dashboard: ${resolved.length} meetings, ${totalLTIs} LTIs`);
 
-        setLocalMeetings(allMeetings);
-
+        setLocalMeetings(resolved);
       } catch (error) {
         console.error('❌ Error reading data:', error);
         setLocalMeetings(meetings);
       }
     };
 
-    // Load immediately
     loadMeetingsData();
 
-    // Refresh when another tab writes to localStorage, and when this tab is
-    // brought back into view, instead of polling on a timer.
+    // Refresh on writes from other tabs and when this tab regains focus,
+    // rather than re-reading everything on a timer.
+    const handleStorageChange = (e) => {
+      const watched = [
+        'savedMeetings',
+        'pastMeetings',
+        'ltiMasterList',
+        'currentMeetingIsolations',
+        'currentMeetingResponses',
+        'currentMeetingInfo'
+      ];
+      if (!e.key || watched.includes(e.key)) loadMeetingsData();
+    };
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') loadMeetingsData();
     };
 
-    window.addEventListener('storage', loadMeetingsData);
+    window.addEventListener('storage', handleStorageChange);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', loadMeetingsData);
 
     return () => {
-      window.removeEventListener('storage', loadMeetingsData);
+      window.removeEventListener('storage', handleStorageChange);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', loadMeetingsData);
     };
   }, [meetings]);
 
 
-  // Debug log whenever meetings change
-  useEffect(() => {
-    console.log('🔄 Asset Manager Dashboard - meetings updated:', {
-      contextMeetings: meetings.length,
-      localMeetings: localMeetings.length
-    });
-  }, [meetings, localMeetings]);
-
-  // Calculate LTI age in days from planned start date
-  const calculateLTIAge = (plannedStartDate) => {
-    if (!plannedStartDate) return { days: 0, display: 'Unknown', isSixMonthsPlus: false };
-    
-    try {
-      const startDate = new Date(plannedStartDate);
-      const currentDate = new Date();
-      const diffTime = Math.abs(currentDate - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      const isSixMonthsPlus = diffDays >= 183; // 6 months = ~183 days
-      
-      let display = '';
-      if (diffDays < 30) {
-        display = `${diffDays} days`;
-      } else if (diffDays < 365) {
-        const months = Math.floor(diffDays / 30);
-        display = `${months} months`;
-      } else {
-        const years = Math.floor(diffDays / 365);
-        const months = Math.floor((diffDays % 365) / 30);
-        display = `${years} year${years > 1 ? 's' : ''}${months > 0 ? ` ${months} months` : ''}`;
-      }
-      
-      return { days: diffDays, display, isSixMonthsPlus };
-    } catch (error) {
-      return { days: 0, display: 'Invalid Date', isSixMonthsPlus: false };
-    }
-  };
-
   // Process all LTI data from meetings - use localMeetings instead of meetings
+  // Deduplicate by isolation ID, keeping the most recent meeting's data
   const processedLTIData = useMemo(() => {
-    const allLTIs = [];
+    const ltiMap = new Map(); // Use Map to track unique LTIs by ID
 
-    console.log('🔍 Processing LTI Data - localMeetings:', localMeetings);
+    // Sort meetings by date (oldest first) so newer data overwrites older
+    const sortedMeetings = [...localMeetings].sort((a, b) =>
+      new Date(a.date || 0) - new Date(b.date || 0)
+    );
 
-    localMeetings.forEach(meeting => {
-      console.log('📋 Processing meeting:', meeting.id, meeting.date);
-      console.log('   - Has isolations:', !!meeting.isolations, meeting.isolations?.length || 0);
-      console.log('   - Has responses:', !!meeting.responses, Object.keys(meeting.responses || {}).length);
-
-      if (meeting.isolations) {
-        const responses = meeting.responses || {};
-
+    sortedMeetings.forEach(meeting => {
+      if (meeting.isolations && meeting.responses) {
         meeting.isolations.forEach(isolation => {
-          // Get the LTI ID - handle different naming conventions
-          const ltiId = isolation.id || isolation.ID || isolation['LTI Number'] || isolation['LTI ID'] || `LTI-${allLTIs.length + 1}`;
-
-          const response = responses[ltiId] || {};
-
-          // Handle different date field names
-          const startDate = isolation['Planned Start Date'] ||
-                           isolation.plannedStartDate ||
-                           isolation['Start Date'] ||
-                           isolation.startDate ||
-                           isolation['Date Created'] ||
-                           isolation.dateCreated;
-
-          const ageInfo = calculateLTIAge(startDate);
-
-          // Get description from various possible fields
-          const description = isolation.description ||
-                             isolation.Description ||
-                             isolation.Title ||
-                             isolation.title ||
-                             isolation['System/Equipment'] ||
-                             isolation.equipment ||
-                             'No description';
-
-          // Get risk level from isolation or response
-          const riskLevel = response.riskLevel ||
-                           isolation['Risk Level'] ||
-                           isolation.riskLevel ||
-                           isolation.Risk ||
-                           'N/A';
-
-          // Get MOC required from isolation or response
-          const mocRequired = response.mocRequired ||
-                             isolation['MOC Required'] ||
-                             isolation.mocRequired ||
-                             'N/A';
-
-          // Get equipment issues
-          const hasEquipmentIssues = isolation['Equipment Issues'] === 'Yes' ||
-                                    isolation.equipmentIssues === 'Yes' ||
-                                    response.equipmentDisconnectionRequired === 'Yes' ||
-                                    response.equipmentRemovalRequired === 'Yes';
-
-          console.log(`   - Processing LTI ${ltiId}:`, {
-            startDate: startDate,
-            ageInfo: ageInfo,
-            hasResponse: Object.keys(response).length > 0,
-            riskLevel: riskLevel
-          });
+          const response = meeting.responses[isolation.id] || {};
+          const ageInfo = calculateLTIAge(isolation['Planned Start Date'] || isolation.plannedStartDate);
 
           const ltiData = {
-            id: ltiId,
-            description: description,
-            plannedStartDate: startDate,
+            id: isolation.id,
+            description: isolation.description || isolation.Title || 'No description',
+            plannedStartDate: isolation['Planned Start Date'] || isolation.plannedStartDate,
             ageInfo: ageInfo,
             meetingDate: meeting.date,
-            systemEquipment: isolation['System/Equipment'] || isolation.equipment || '',
 
-            // Assessment data - from response or isolation
-            riskLevel: riskLevel,
-            businessImpact: response.businessImpact || isolation.businessImpact || 'N/A',
-            mocRequired: mocRequired,
-            mocNumber: response.mocNumber || isolation.mocNumber || '',
-            mocStatus: response.mocStatus || isolation.mocStatus || 'N/A',
-            partsRequired: response.partsRequired || isolation.partsRequired || 'N/A',
-            partsExpectedDate: response.partsExpectedDate || isolation.partsExpectedDate || '',
-            partsStatus: response.partsStatus || isolation.partsStatus || 'Not Assessed',
-            equipmentDisconnectionRequired: response.equipmentDisconnectionRequired || (hasEquipmentIssues ? 'Yes' : 'N/A'),
+            // Assessment data
+            riskLevel: response.riskLevel || 'N/A',
+            businessImpact: response.businessImpact || 'N/A',
+            mocRequired: response.mocRequired || 'N/A',
+            mocNumber: response.mocNumber || '',
+            mocStatus: response.mocStatus || 'N/A',
+            partsRequired: response.partsRequired || 'N/A',
+            partsExpectedDate: response.partsExpectedDate || '',
+            partsStatus: response.partsStatus || 'Not Assessed',
+            equipmentDisconnectionRequired: response.equipmentDisconnectionRequired || 'N/A',
             equipmentRemovalRequired: response.equipmentRemovalRequired || 'N/A',
-            plannedResolutionDate: response.plannedResolutionDate || isolation.plannedResolutionDate || '',
-            actionRequired: response.actionRequired || isolation.actionRequired || 'N/A',
+            plannedResolutionDate: response.plannedResolutionDate || '',
+            actionRequired: response.actionRequired || 'N/A',
             actionItems: response.actionItems || [],
-            comments: response.comments || isolation.comments || '',
+            comments: response.comments || '',
 
             // WMS Manual risks
-            corrosionRisk: response.corrosionRisk || isolation.corrosionRisk || 'N/A',
-            deadLegsRisk: response.deadLegsRisk || isolation.deadLegsRisk || 'N/A',
-            automationLossRisk: response.automationLossRisk || isolation.automationLossRisk || 'N/A'
+            corrosionRisk: response.corrosionRisk || 'N/A',
+            deadLegsRisk: response.deadLegsRisk || 'N/A',
+            automationLossRisk: response.automationLossRisk || 'N/A'
           };
 
-          allLTIs.push(ltiData);
+          // Store by ID - newer meetings will overwrite older ones
+          ltiMap.set(isolation.id, ltiData);
         });
-      } else {
-        console.log('   ⚠️ Meeting missing isolations');
       }
     });
 
-    console.log('🎯 Final processed LTIs:', allLTIs.length, allLTIs);
-    return allLTIs;
+    // Convert Map values back to array
+    return Array.from(ltiMap.values());
   }, [localMeetings]);
 
   // Calculate dashboard statistics
@@ -362,77 +268,179 @@ const AssetManagerDashboard = () => {
     setAgendaDialogOpen(true);
   };
 
-  // Export Asset Manager Report
-  const handleExportReport = () => {
-    const reportData = {
-      period: 'All Time',
-      totalLTIs: dashboardStats.totalLTIs,
-      allLTIs: processedLTIData,
-      sixMonthsPlusLTIs: dashboardStats.sixMonthsPlusLTIs,
-      stats: {
+  // Export Asset Manager Report as PDF
+  const handleExportReport = async () => {
+    try {
+      const reportData = {
+        date: new Date().toISOString().split('T')[0],
+        attendees: ['Asset Manager', 'OMT Team'],
+        isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
+          id: lti.id,
+          description: lti.description,
+          'Planned Start Date': lti.plannedStartDate
+        })),
+        responses: dashboardStats.sixMonthsPlusLTIs.reduce((acc, lti) => {
+          acc[lti.id] = {
+            riskLevel: lti.riskLevel,
+            mocRequired: lti.mocRequired,
+            mocNumber: lti.mocNumber,
+            partsRequired: lti.partsRequired,
+            actionRequired: lti.actionRequired,
+            comments: `Age: ${lti.ageInfo.display}. ${lti.comments || 'Asset Manager Review Required.'}`
+          };
+          return acc;
+        }, {}),
+        meetingData: {
+          executiveSummary: {
+            totalIsolationsReviewed: dashboardStats.sixMonthsPlus,
+            criticalFindings: dashboardStats.criticalRisk + dashboardStats.highRisk,
+            actionItemsGenerated: dashboardStats.mocRequired,
+            relatedIsolationWarnings: []
+          },
+          riskAnalysis: {
+            distribution: {
+              Critical: { count: dashboardStats.criticalRisk },
+              High: { count: dashboardStats.highRisk },
+              Medium: { count: processedLTIData.filter(lti => lti.riskLevel === 'Medium').length },
+              Low: { count: processedLTIData.filter(lti => lti.riskLevel === 'Low').length }
+            }
+          }
+        }
+      };
+
+      const result = await exportMeetingToPDF(reportData);
+      if (result.success) {
+        alert('Asset Manager Report exported successfully!');
+      } else {
+        alert(`Error exporting report: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting Asset Manager Report:', error);
+      alert('Error exporting report. Please try again.');
+    }
+  };
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    try {
+      const result = exportAssetManagerToCSV(processedLTIData, 'all');
+      if (result.success) {
+        alert('CSV exported successfully!');
+      } else {
+        alert(`Error exporting CSV: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Error exporting CSV. Please try again.');
+    }
+  };
+
+  // Email Asset Manager Report
+  const handleEmailReport = () => {
+    try {
+      const stats = {
         totalLTIs: dashboardStats.totalLTIs,
         sixMonthsPlus: dashboardStats.sixMonthsPlus,
         criticalRisk: dashboardStats.criticalRisk,
+        highRisk: dashboardStats.highRisk,
         mocRequired: dashboardStats.mocRequired,
-        riskDistribution: {
-          critical: dashboardStats.criticalRisk,
-          high: dashboardStats.highRisk,
-          medium: processedLTIData.filter(lti => lti.riskLevel === 'Medium').length,
-          low: processedLTIData.filter(lti => lti.riskLevel === 'Low').length
-        }
-      }
-    };
+        equipmentIssues: dashboardStats.equipmentIssues,
+        urgentAction: dashboardStats.urgentAction,
+        sixMonthsPlusLTIs: dashboardStats.sixMonthsPlusLTIs
+      };
+      const subject = `Asset Manager LTI Status Report - ${new Date().toLocaleDateString()}`;
+      const body = generateAssetManagerReportEmail(processedLTIData, stats);
+      openEmailClient('', subject, body);
+      alert('Email client opened with Asset Manager report');
+    } catch (error) {
+      console.error('Error generating email:', error);
+      alert('Error generating email. Please try again.');
+    }
+  };
 
-    const result = exportAssetManagerReport(reportData);
-    setSnackbar({
-      open: true,
-      message: result.message,
-      severity: result.success ? 'success' : 'error'
-    });
+  // Save report to SharePoint (downloads JSON for upload)
+  const handleSaveToSharePoint = () => {
+    try {
+      const reportData = {
+        reportDate: new Date().toISOString(),
+        stats: {
+          totalLTIs: dashboardStats.totalLTIs,
+          sixMonthsPlus: dashboardStats.sixMonthsPlus,
+          criticalRisk: dashboardStats.criticalRisk,
+          highRisk: dashboardStats.highRisk,
+          mocRequired: dashboardStats.mocRequired
+        },
+        ltis: processedLTIData
+      };
+      const filename = `Asset_Manager_Report_${new Date().toISOString().split('T')[0]}.json`;
+      downloadAsFile(JSON.stringify(reportData, null, 2), filename, 'application/json');
+      alert(`File "${filename}" downloaded. Upload it to your SharePoint document library.`);
+    } catch (error) {
+      console.error('Error saving to SharePoint:', error);
+      alert('Error creating file. Please try again.');
+    }
+  };
+
+  // Export Meeting Agenda as PDF
+  const handleExportAgendaPDF = async () => {
+    try {
+      const agendaData = {
+        date: new Date().toISOString().split('T')[0],
+        attendees: ['Asset Manager', 'OMT Team', 'Operations Manager'],
+        isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
+          id: lti.id,
+          description: lti.description,
+          'Planned Start Date': lti.plannedStartDate
+        })),
+        responses: dashboardStats.sixMonthsPlusLTIs.reduce((acc, lti) => {
+          acc[lti.id] = {
+            riskLevel: lti.riskLevel,
+            mocRequired: lti.mocRequired,
+            comments: `Meeting Agenda Item - ${lti.ageInfo.display} old, ${lti.riskLevel} risk`
+          };
+          return acc;
+        }, {}),
+        meetingData: {
+          executiveSummary: {
+            totalIsolationsReviewed: dashboardStats.totalLTIs,
+            criticalFindings: dashboardStats.criticalRisk + dashboardStats.highRisk,
+            actionItemsGenerated: dashboardStats.urgentAction,
+            relatedIsolationWarnings: []
+          }
+        }
+      };
+
+      const result = await exportMeetingToPDF(agendaData);
+      if (result.success) {
+        alert('Meeting Agenda exported successfully!');
+        setAgendaDialogOpen(false);
+      } else {
+        alert(`Error exporting agenda: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error exporting Meeting Agenda:', error);
+      alert('Error exporting agenda. Please try again.');
+    }
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <strong>Debug:</strong> Context meetings: {meetings.length}, Local meetings: {localMeetings.length}, 
-          Total LTIs: {dashboardStats.totalLTIs}, 6+ months: {dashboardStats.sixMonthsPlus}
-        </Alert>
-      )}
+      {/* Debug Info - Always show to help diagnose count issues */}
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <strong>Data Sources:</strong> {localMeetings.length} meetings loaded |
+        Unique LTI IDs: {processedLTIData.length} |
+        Raw isolation count: {localMeetings.reduce((acc, m) => acc + (m.isolations?.length || 0), 0)}
+      </Alert>
 
       {/* Page Header */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-          <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center' }}>
-            <BusinessIcon sx={{ mr: 2, color: 'primary.main', fontSize: 40 }} />
-            Asset Manager Dashboard
-          </Typography>
-
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<PdfIcon />}
-              onClick={handleExportReport}
-              disabled={processedLTIData.length === 0}
-            >
-              Export Report
-            </Button>
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<CalendarIcon />}
-              onClick={generateMeetingAgenda}
-              disabled={dashboardStats.sixMonthsPlus === 0}
-            >
-              Generate Agenda
-            </Button>
-          </Box>
-        </Box>
-
+        <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <BusinessIcon sx={{ mr: 2, color: 'primary.main', fontSize: 40 }} />
+          Asset Manager Dashboard
+        </Typography>
+        
         <Alert severity="warning" sx={{ mb: 3 }}>
-          <strong>WMS Manual Requirement:</strong> LTIs over 6 months require Asset Manager review every 6 months.
+          <strong>WMS Manual Requirement:</strong> LTIs over 6 months require Asset Manager review every 6 months. 
           This dashboard tracks {dashboardStats.sixMonthsPlus} LTIs requiring management attention.
         </Alert>
       </Box>
@@ -496,10 +504,41 @@ const AssetManagerDashboard = () => {
         <Button
           variant="outlined"
           startIcon={<DownloadIcon />}
+          onClick={handleExportReport}
           color="secondary"
           size="large"
         >
-          Export Asset Manager Report
+          Export PDF
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportCSV}
+          color="info"
+          size="large"
+        >
+          Export CSV
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<EmailIcon />}
+          onClick={handleEmailReport}
+          color="secondary"
+          size="large"
+        >
+          Email Report
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<CloudUploadIcon />}
+          onClick={handleSaveToSharePoint}
+          color="success"
+          size="large"
+        >
+          Save to SharePoint
         </Button>
       </Box>
 
@@ -842,27 +881,11 @@ const AssetManagerDashboard = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAgendaDialogOpen(false)}>Close</Button>
-          <Button variant="contained" startIcon={<DownloadIcon />}>
+          <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleExportAgendaPDF}>
             Export Agenda PDF
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Snackbar for feedback */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

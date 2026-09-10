@@ -183,16 +183,17 @@ function MeetingSummaryPage() {
   
   const finalizeMeeting = async () => {
     const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
-    const isolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
+    const savedIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
 
     const newMeeting = {
       // Reuse the id assigned when the meeting was started so re-finalizing
-      // updates the same record instead of creating a duplicate.
-      id: meetingInfo.id || `meeting-${Date.now()}`,
+      // updates the same record instead of creating a duplicate. The random
+      // suffix only applies to meetings started before ids were assigned.
+      id: meetingInfo.id || `meeting-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date: meetingInfo.date,
       attendees: meetingInfo.attendees,
-      isolations: isolations,
       responses: responses,
+      isolations: savedIsolations,
       timestamp: new Date().toISOString(),
       statistics: statistics
     };

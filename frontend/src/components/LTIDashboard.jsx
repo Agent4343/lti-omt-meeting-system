@@ -321,10 +321,6 @@ function LTIDashboard() {
     
     data.relatedIsolationWarnings = relatedWarnings;
 
-    console.log('🔍 LTI Dashboard - Calculated data:', data);
-    console.log('🔍 LTI Dashboard - All removals found:', allRemovals);
-    console.log('🔍 LTI Dashboard - Filtered meetings:', filteredMeetings.length);
-
     setDashboardData(data);
     setLoading(false);
   };

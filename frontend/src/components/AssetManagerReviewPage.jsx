@@ -160,6 +160,11 @@ function AssetManagerReviewPage() {
               ageInMonths: Math.floor(ageInMonths),
               riskLevel: riskLevel,
               mocRequired: mocRequiredValue,
+              mocNumber: response.mocNumber || isolation.mocNumber || '',
+              status: response.status || isolation.status || 'Removed',
+              resolutionStrategy: response.resolutionStrategy || isolation.resolutionStrategy || 'N/A',
+              escalationReason: response.escalationReason || '',
+              meetingDate: sourceName,
               removalDate: sourceName,
               removalReason: response.comments || 'Completed'
             });

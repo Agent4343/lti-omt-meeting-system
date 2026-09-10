@@ -48,6 +48,9 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import BuildIcon from '@mui/icons-material/Build';
 import SecurityIcon from '@mui/icons-material/Security';
 import PrintIcon from '@mui/icons-material/Print';
+import EmailIcon from '@mui/icons-material/Email';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { openEmailClient, generateAttendeeNotificationEmail, downloadAsFile } from '../utils/emailUtils';
 
 function ComprehensiveMeetingSummary() {
   const navigate = useNavigate();
@@ -197,14 +200,6 @@ function ComprehensiveMeetingSummary() {
         Math.round((data.riskAnalysis.distribution[risk].count / reviewedCount) * 100) : 0;
     });
     
-    console.log('Meeting Data Calculation:', {
-      totalIsolations: total,
-      reviewedCount: reviewedCount,
-      actualTotal: actualTotal,
-      criticalCount: criticalCount,
-      responses: responses ? Object.keys(responses) : 'none'
-    });
-    
     setMeetingData(data);
   };
   
@@ -223,8 +218,9 @@ function ComprehensiveMeetingSummary() {
     // Create comprehensive meeting summary with all isolation data
     const meeting = {
       // Reuse the id assigned when the meeting was started so re-finalizing
-      // updates the same record instead of creating a duplicate.
-      id: meetingInfo.id || `meeting-${Date.now()}`,
+      // updates the same record instead of creating a duplicate. The random
+      // suffix only applies to meetings started before ids were assigned.
+      id: meetingInfo.id || `meeting-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date: meetingInfo.date,
       attendees: meetingInfo.attendees,
       responses: responses,
@@ -306,6 +302,61 @@ function ComprehensiveMeetingSummary() {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  // Notify attendees via email
+  const handleNotifyAttendees = () => {
+    try {
+      const meeting = {
+        date: meetingInfo.date,
+        attendees: meetingInfo.attendees,
+        responses: responses,
+        isolations: isolations
+      };
+      const { subject, body } = generateAttendeeNotificationEmail(meeting);
+      openEmailClient('', subject, body);
+      setSnackbar({
+        open: true,
+        message: 'Email client opened with attendee notification',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error generating notification email:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error generating email. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Save meeting to SharePoint
+  const handleSaveToSharePoint = () => {
+    try {
+      const meeting = {
+        id: `meeting-${Date.now()}`,
+        date: meetingInfo.date,
+        attendees: meetingInfo.attendees,
+        responses: responses,
+        isolations: isolations,
+        meetingData: meetingData,
+        timestamp: new Date().toISOString()
+      };
+      const filename = `LTI_Meeting_${meetingInfo.date || 'NoDate'}.json`;
+      downloadAsFile(JSON.stringify(meeting, null, 2), filename, 'application/json');
+      setSnackbar({
+        open: true,
+        message: `File "${filename}" downloaded. Upload it to your SharePoint document library.`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error saving to SharePoint:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error creating file. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
+
   if (!meetingInfo || !responses) return null;
 
   return (
@@ -333,13 +384,37 @@ function ComprehensiveMeetingSummary() {
           </Box>
           
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title="Print Summary">
-              <IconButton 
-                sx={{ 
-                  bgcolor: 'rgba(255,255,255,0.2)', 
+            <Tooltip title="Notify Attendees">
+              <IconButton
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.2)',
                   color: 'white',
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' }
-                }} 
+                }}
+                onClick={handleNotifyAttendees}
+              >
+                <EmailIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Save to SharePoint">
+              <IconButton
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' }
+                }}
+                onClick={handleSaveToSharePoint}
+              >
+                <CloudUploadIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Print Summary">
+              <IconButton
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' }
+                }}
                 onClick={() => window.print()}
               >
                 <PrintIcon />
