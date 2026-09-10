@@ -12,7 +12,11 @@ export { default as sharePointDocumentStorage } from './sharepoint-document-stor
 export { SharePointDocumentStorage } from './sharepoint-document-storage';
 
 // Hybrid Storage Provider (combines SharePoint + localStorage)
-export { default as hybridStorageProvider } from './hybrid-storage-provider';
+// Imported rather than re-exported directly, because `export { default as x }`
+// creates no local binding for x to alias below.
+import hybridStorageProvider from './hybrid-storage-provider';
+
+export { hybridStorageProvider };
 export { HybridStorageProvider } from './hybrid-storage-provider';
 
 // Re-export for convenience - main storage provider to use

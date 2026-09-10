@@ -170,10 +170,16 @@ class HybridStorageProvider {
       m.id === meetingId || m.timestamp === meetingId
     );
 
-    if (index !== -1) {
-      localMeetings[index] = { ...localMeetings[index], ...meetingData };
-      this._setLocalStorage('savedMeetings', localMeetings);
+    if (index === -1) {
+      // Nothing to update - reporting success here would hide a bad meetingId.
+      return {
+        success: false,
+        error: `No meeting found with id ${meetingId}`
+      };
     }
+
+    localMeetings[index] = { ...localMeetings[index], ...meetingData };
+    this._setLocalStorage('savedMeetings', localMeetings);
 
     // Sync to SharePoint Document Library if available
     if (this.isSharePointEnabled()) {
@@ -297,6 +303,17 @@ class HybridStorageProvider {
             data: person
           };
         }
+
+        // Resolved but unsuccessful - queue it like the thrown-error path does,
+        // otherwise the attendee never reaches SharePoint.
+        console.warn('Failed to save to SharePoint:', result.error);
+        this._addPendingChange('attendee', 'create', person);
+        return {
+          success: true,
+          savedTo: 'localStorage',
+          pendingSync: true,
+          data: person
+        };
       } catch (error) {
         console.warn('Failed to save to SharePoint:', error.message);
         this._addPendingChange('attendee', 'create', person);
@@ -450,13 +467,28 @@ class HybridStorageProvider {
   }
 
   /**
-   * Clear current meeting
+   * Clear current meeting from localStorage and SharePoint
+   * Both have to be cleared: leaving the SharePoint current-* files in place
+   * would let the next sync restore a finalized meeting as the active one.
+   * @returns {Promise<Object>}
    */
-  clearCurrentMeeting() {
+  async clearCurrentMeeting() {
     localStorage.removeItem('currentMeetingInfo');
     localStorage.removeItem('currentMeetingIsolations');
     localStorage.removeItem('currentMeetingResponses');
     localStorage.removeItem('currentMeetingPosition');
+
+    if (this.isSharePointEnabled()) {
+      try {
+        const result = await this.storageService.clearCurrentMeeting();
+        return { success: result.success, clearedFrom: 'SharePoint Document Library' };
+      } catch (error) {
+        console.warn('Failed to clear current meeting on SharePoint:', error.message);
+        return { success: false, clearedFrom: 'localStorage', error: error.message };
+      }
+    }
+
+    return { success: true, clearedFrom: 'localStorage' };
   }
 
   // ========================================
@@ -575,12 +607,15 @@ class HybridStorageProvider {
       // Use the document storage service's built-in sync method
       const result = await this.storageService.syncToLocalStorage();
 
+      const meetings = result.synced?.savedMeetings || 0;
+      const people = result.synced?.savedPeople || 0;
+
       return {
         success: result.success,
-        meetings: result.synced?.meetings || 0,
-        people: result.synced?.attendees || 0,
+        meetings,
+        people,
         message: result.success
-          ? `Loaded ${result.synced?.meetings || 0} meetings and ${result.synced?.attendees || 0} attendees from SharePoint`
+          ? `Loaded ${meetings} meetings and ${people} attendees from SharePoint`
           : result.error
       };
     } catch (error) {

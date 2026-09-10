@@ -130,6 +130,7 @@ function MeetingPage() {
       }
       
       const meetingInfo = { 
+        id: `meeting-${Date.now()}`,
         date: meetingDate, 
         attendees: selectedAttendees,
         createdAt: new Date().toISOString()

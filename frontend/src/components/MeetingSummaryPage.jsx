@@ -81,7 +81,7 @@ import * as XLSX from 'xlsx';
 
 function MeetingSummaryPage() {
   const navigate = useNavigate();
-  const { currentMeeting, syncToSharePoint, storageStatus } = useAppContext();
+  const { currentMeeting, syncToSharePoint, storageStatus, clearCurrentMeeting } = useAppContext();
   const [syncing, setSyncing] = useState(false);
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [responses, setResponses] = useState(null);
@@ -186,7 +186,9 @@ function MeetingSummaryPage() {
     const isolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
 
     const newMeeting = {
-      id: `meeting-${Date.now()}`,
+      // Reuse the id assigned when the meeting was started so re-finalizing
+      // updates the same record instead of creating a duplicate.
+      id: meetingInfo.id || `meeting-${Date.now()}`,
       date: meetingInfo.date,
       attendees: meetingInfo.attendees,
       isolations: isolations,
@@ -195,10 +197,10 @@ function MeetingSummaryPage() {
       statistics: statistics
     };
 
-    // Check if meeting with same date already exists (avoid duplicates)
-    const existingIndex = pastMeetings.findIndex(m => m.date === newMeeting.date);
+    // Update this meeting if it has already been archived. Matching on id
+    // rather than date, so two meetings held on the same day both survive.
+    const existingIndex = pastMeetings.findIndex(m => m.id === newMeeting.id);
     if (existingIndex >= 0) {
-      // Update existing meeting instead of adding duplicate
       pastMeetings[existingIndex] = newMeeting;
     } else {
       pastMeetings.push(newMeeting);
@@ -208,10 +210,10 @@ function MeetingSummaryPage() {
     // Store current meeting responses as previous meeting responses for next meeting
     localStorage.setItem('previousMeetingResponses', JSON.stringify(responses));
 
-    // Clean current meeting cache
-    localStorage.removeItem('currentMeetingInfo');
-    localStorage.removeItem('currentMeetingIsolations');
-    localStorage.removeItem('currentMeetingResponses');
+    // Clean current meeting cache. This clears SharePoint too - leaving the
+    // current-* files there would restore the finalized meeting as the active
+    // one on the next startup sync.
+    await clearCurrentMeeting();
 
     setConfirmDialog(false);
 
@@ -673,8 +675,9 @@ function MeetingSummaryPage() {
             size="large"
             startIcon={<SaveIcon />}
             onClick={confirmFinalizeMeeting}
+            disabled={syncing}
           >
-            Finalize and Save Meeting
+            {syncing ? 'Saving...' : 'Finalize and Save Meeting'}
           </Button>
         </Box>
       </Paper>

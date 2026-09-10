@@ -20,7 +20,12 @@ function HomePage() {
       alert('Please select a meeting date and attendees.');
       return;
     }
-    const meetingInfo = { date: meetingDate, attendees };
+    const meetingInfo = {
+      id: `meeting-${Date.now()}`,
+      date: meetingDate,
+      attendees,
+      createdAt: new Date().toISOString()
+    };
     setCurrentMeeting(meetingInfo);
     navigate('/setup');
   };

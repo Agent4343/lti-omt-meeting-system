@@ -442,6 +442,35 @@ class SharePointDocumentStorage {
   }
 
   /**
+   * Clear the current meeting files
+   * Called when a meeting is finalized, so the finished meeting is not
+   * restored as the active one by the next sync.
+   * @returns {Promise<Object>}
+   */
+  async clearCurrentMeeting() {
+    const files = [
+      'current-meeting.json',
+      'current-isolations.json',
+      'current-responses.json'
+    ];
+
+    const results = await Promise.allSettled(
+      files.map(file => this.deleteFile(file))
+    );
+
+    const failed = files.filter((file, i) =>
+      results[i].status === 'rejected' || !results[i].value?.success
+    );
+
+    if (failed.length) {
+      console.warn('⚠️ Could not clear current meeting files:', failed.join(', '));
+      return { success: false, failed };
+    }
+
+    return { success: true };
+  }
+
+  /**
    * Get isolations for current meeting
    */
   async getIsolations() {
@@ -579,50 +608,9 @@ class SharePointDocumentStorage {
         this.getLTIMasterList()
       ]);
 
-      // Combine saved meetings (avoid duplicates by timestamp, id, or date)
-      // Use local data as source of truth - replace SharePoint data with local if same date
-      const allMeetings = [];
-      const seenMeetingDates = new Set();
-
-      // First add all local meetings (they are more recent)
-      for (const localMeeting of localMeetings) {
-        const meetingKey = localMeeting.date || localMeeting.timestamp;
-        if (!seenMeetingDates.has(meetingKey)) {
-          allMeetings.push(localMeeting);
-          seenMeetingDates.add(meetingKey);
-        }
-      }
-
-      // Then add SharePoint meetings that don't conflict
-      for (const spMeeting of spMeetings) {
-        const meetingKey = spMeeting.date || spMeeting.timestamp;
-        if (!seenMeetingDates.has(meetingKey)) {
-          allMeetings.push(spMeeting);
-          seenMeetingDates.add(meetingKey);
-        }
-      }
-
-      // Combine past meetings (avoid duplicates by date - local takes priority)
-      const allPastMeetings = [];
-      const seenPastMeetingDates = new Set();
-
-      // First add all local past meetings (they are more recent)
-      for (const localMeeting of localPastMeetings) {
-        const meetingKey = localMeeting.date || localMeeting.timestamp;
-        if (!seenPastMeetingDates.has(meetingKey)) {
-          allPastMeetings.push(localMeeting);
-          seenPastMeetingDates.add(meetingKey);
-        }
-      }
-
-      // Then add SharePoint past meetings that don't conflict
-      for (const spMeeting of spPastMeetings) {
-        const meetingKey = spMeeting.date || spMeeting.timestamp;
-        if (!seenPastMeetingDates.has(meetingKey)) {
-          allPastMeetings.push(spMeeting);
-          seenPastMeetingDates.add(meetingKey);
-        }
-      }
+      // Combine meetings, local first (local is treated as more recent).
+      const allMeetings = this._mergeMeetings(localMeetings, spMeetings);
+      const allPastMeetings = this._mergeMeetings(localPastMeetings, spPastMeetings);
 
       // Combine attendees (avoid duplicates by name)
       const allPeople = [...spPeople];
@@ -695,61 +683,106 @@ class SharePointDocumentStorage {
   }
 
   /**
+   * Merge two meeting lists, preferring entries from the first list.
+   * Identity is the meeting id, falling back to timestamp then date for
+   * records written before ids were assigned. A meeting with none of those
+   * cannot be matched, so it is always kept rather than being collapsed
+   * together with every other keyless meeting.
+   * @param {Array} preferred - Takes priority on conflicts (local data)
+   * @param {Array} others - Added only where they do not conflict
+   * @returns {Array}
+   */
+  _mergeMeetings(preferred, others) {
+    const merged = [];
+    const seen = new Set();
+
+    const add = (meeting) => {
+      const key = meeting.id || meeting.timestamp || meeting.date;
+      if (!key) {
+        // No stable identity - keep it rather than discard it.
+        merged.push(meeting);
+        return;
+      }
+      if (!seen.has(key)) {
+        merged.push(meeting);
+        seen.add(key);
+      }
+    };
+
+    (preferred || []).forEach(add);
+    (others || []).forEach(add);
+
+    return merged;
+  }
+
+  /**
    * Sync from SharePoint to localStorage
    */
   async syncToLocalStorage() {
     try {
       console.log('📥 Loading data from SharePoint...');
 
-      const [meetings, pastMeetings, attendees, ltiMasterList, currentMeeting, isolations, responses] = await Promise.all([
-        this.getMeetings(),
-        this.getPastMeetings(),
-        this.getAttendees(),
-        this.getLTIMasterList(),
-        this.getCurrentMeeting(),
-        this.getIsolations(),
-        this.getResponses()
-      ]);
+      // Read the raw files rather than the getters: the getters coerce both
+      // "file absent" and "request failed" into an empty collection, which is
+      // indistinguishable from a genuinely empty one. Overwriting localStorage
+      // with that would destroy local data whenever SharePoint is unreachable.
+      const files = [
+        { key: 'savedMeetings', file: 'meetings.json', empty: [] },
+        { key: 'pastMeetings', file: 'past-meetings.json', empty: [] },
+        { key: 'savedPeople', file: 'attendees.json', empty: [] },
+        { key: 'ltiMasterList', file: 'lti-master-list.json', empty: [] },
+        { key: 'currentMeetingInfo', file: 'current-meeting.json', empty: null },
+        { key: 'currentMeetingIsolations', file: 'current-isolations.json', empty: [] },
+        { key: 'currentMeetingResponses', file: 'current-responses.json', empty: {} }
+      ];
 
-      console.log('📦 SharePoint data loaded:', {
-        meetings: meetings.length,
-        pastMeetings: pastMeetings.length,
-        attendees: attendees.length,
-        ltiMasterList: ltiMasterList.length
+      const results = await Promise.allSettled(
+        files.map(({ file }) => this.readFile(file))
+      );
+
+      const failed = [];
+      const synced = {};
+
+      results.forEach((result, i) => {
+        const { key, file, empty } = files[i];
+
+        if (result.status === 'rejected') {
+          // Request failed - keep whatever is already in localStorage.
+          failed.push(file);
+          return;
+        }
+
+        if (result.value === null || result.value === undefined) {
+          // File genuinely does not exist yet on SharePoint. Nothing has ever
+          // been written there, so local data stays as-is.
+          return;
+        }
+
+        localStorage.setItem(key, JSON.stringify(result.value));
+        synced[key] = Array.isArray(result.value)
+          ? result.value.length
+          : Object.keys(result.value || empty || {}).length;
       });
 
-      // Save to localStorage
-      localStorage.setItem('savedMeetings', JSON.stringify(meetings));
-      localStorage.setItem('pastMeetings', JSON.stringify(pastMeetings));
-      localStorage.setItem('savedPeople', JSON.stringify(attendees));
-      localStorage.setItem('ltiMasterList', JSON.stringify(ltiMasterList));
-
-      if (currentMeeting) {
-        localStorage.setItem('currentMeetingInfo', JSON.stringify(currentMeeting));
-      }
-      if (isolations.length) {
-        localStorage.setItem('currentMeetingIsolations', JSON.stringify(isolations));
-      }
-      if (Object.keys(responses).length) {
-        localStorage.setItem('currentMeetingResponses', JSON.stringify(responses));
+      if (failed.length) {
+        console.warn('⚠️ Kept local data for files that failed to load:', failed.join(', '));
+        return {
+          success: false,
+          error: `Failed to load from SharePoint: ${failed.join(', ')}`,
+          failed,
+          synced
+        };
       }
 
-      console.log('✅ localStorage updated from SharePoint');
+      console.log('✅ localStorage updated from SharePoint:', synced);
 
-      return {
-        success: true,
-        synced: {
-          meetings: meetings.length,
-          pastMeetings: pastMeetings.length,
-          attendees: attendees.length,
-          ltiMasterList: ltiMasterList.length
-        }
-      };
+      return { success: true, synced };
     } catch (error) {
       console.error('❌ Error loading from SharePoint:', error);
       return { success: false, error: error.message };
     }
   }
+
 }
 
 // Export singleton

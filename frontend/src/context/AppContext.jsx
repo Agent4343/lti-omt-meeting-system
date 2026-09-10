@@ -88,7 +88,7 @@ export const AppContextProvider = ({ children }) => {
         setMeetings(loadedMeetings);
 
         // Load current meeting (always from localStorage for active session)
-        const currentMeetingInfo = hybridStorageProvider.getCurrentMeeting();
+        const currentMeetingInfo = await hybridStorageProvider.getCurrentMeeting();
         setCurrentMeeting(currentMeetingInfo);
 
         setLoading(false);
@@ -129,11 +129,10 @@ export const AppContextProvider = ({ children }) => {
   // Save current meeting to storage whenever it changes
   useEffect(() => {
     if (!loading && currentMeeting) {
-      try {
-        hybridStorageProvider.setCurrentMeeting(currentMeeting);
-      } catch (error) {
-        ErrorHandler.logError(error, 'Saving current meeting data');
-      }
+      // setCurrentMeeting is async; a try/catch would not see a rejected
+      // promise, so attach a handler instead.
+      Promise.resolve(hybridStorageProvider.setCurrentMeeting(currentMeeting))
+        .catch(error => ErrorHandler.logError(error, 'Saving current meeting data'));
     }
   }, [currentMeeting, loading]);
 
@@ -257,9 +256,16 @@ export const AppContextProvider = ({ children }) => {
     return hybridStorageProvider.createBackup();
   }, []);
 
+  // Clear the active meeting from every storage layer
+  const clearCurrentMeeting = useCallback(async () => {
+    const result = await hybridStorageProvider.clearCurrentMeeting();
+    setCurrentMeeting(null);
+    return result;
+  }, []);
+
   // Restore from backup
-  const restoreBackup = useCallback((backupData) => {
-    const result = hybridStorageProvider.restoreBackup(backupData);
+  const restoreBackup = useCallback(async (backupData) => {
+    const result = await hybridStorageProvider.restoreBackup(backupData);
 
     if (result.success) {
       // Reload data into state
@@ -298,6 +304,7 @@ export const AppContextProvider = ({ children }) => {
     refreshFromSharePoint,
     createBackup,
     restoreBackup,
+    clearCurrentMeeting,
 
     // Storage provider access for advanced use
     storageProvider: hybridStorageProvider

@@ -346,8 +346,8 @@ class SharePoint2013DataService {
       Status: 'Active',
       MeetingId: meetingId,
       RelatedIsolations: JSON.stringify(isolationData.relatedIsolations || []),
-      MOCRequired: isolationData.mocRequired ? 'Yes' : 'No',
-      PartsRequired: isolationData.partsRequired ? 'Yes' : 'No',
+      MOCRequired: this._formatYesNo(isolationData.mocRequired),
+      PartsRequired: this._formatYesNo(isolationData.partsRequired),
       Comments: isolationData.comments || ''
     };
 
@@ -674,8 +674,8 @@ class SharePoint2013DataService {
       status: item.Status || 'Active',
       meetingId: item.MeetingId,
       relatedIsolations: this._safeJsonParse(item.RelatedIsolations, []),
-      mocRequired: item.MOCRequired === 'Yes',
-      partsRequired: item.PartsRequired === 'Yes',
+      mocRequired: item.MOCRequired || 'N/A',
+      partsRequired: item.PartsRequired || 'N/A',
       comments: item.Comments || ''
     };
   }
@@ -692,6 +692,21 @@ class SharePoint2013DataService {
     } catch (error) {
       return fallback;
     }
+  }
+
+  /**
+   * Normalize a Yes/No field for SharePoint
+   * The app stores these as the strings 'Yes' / 'No' / 'N/A', so plain
+   * truthiness would turn 'No' and 'N/A' into 'Yes'. Booleans are also
+   * accepted for callers that pass them.
+   * @param {string|boolean|undefined} value
+   * @returns {string} 'Yes' or 'No'
+   */
+  _formatYesNo(value) {
+    if (typeof value === 'string') {
+      return value.trim().toLowerCase() === 'yes' ? 'Yes' : 'No';
+    }
+    return value === true ? 'Yes' : 'No';
   }
 
   /**
