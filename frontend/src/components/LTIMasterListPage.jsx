@@ -40,6 +40,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import EnablonLinkButton from './EnablonLinkButton';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import EmailIcon from '@mui/icons-material/Email';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -689,6 +690,18 @@ function LTIMasterListPage() {
           </Box>
           
           <Box>
+            <EnablonLinkButton variant="outlined" size="medium" sx={{ mr: 2 }} />
+
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUploadIcon />}
+              sx={{ mr: 2 }}
+            >
+              Import Excel
+              <input type="file" hidden accept=".xlsx, .xls" onChange={handleFileUpload} />
+            </Button>
+
             <Button 
               variant="outlined" 
               startIcon={<CloudDownloadIcon />} 

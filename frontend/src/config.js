@@ -31,6 +31,17 @@ export const FEATURE_FLAGS = {
   ENABLE_LAZY_LOADING: process.env.REACT_APP_ENABLE_LAZY_LOADING !== 'false' // Default true
 };
 
+// Enablon (source system for LTI / isolation data)
+// Users export the LTI list from here, then upload it into this app.
+// NOTE: this is the dashboard entry point, not a copy of a login URL. Sign-in
+// links carry one-time `state` and `code_challenge` values that expire within
+// minutes, so they cannot be reused as a permanent link - going to the
+// dashboard lets SSO issue a fresh login instead.
+export const ENABLON_CONFIG = {
+  URL: process.env.REACT_APP_ENABLON_URL || 'https://exxonmobil-orm.us.enablon.io/dashboard',
+  LABEL: process.env.REACT_APP_ENABLON_LABEL || 'Get LTI list from Enablon'
+};
+
 // SharePoint configuration
 export const SHAREPOINT_CONFIG = {
   // Enable SharePoint integration

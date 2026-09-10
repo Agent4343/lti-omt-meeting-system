@@ -35,6 +35,7 @@ import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useAppContext } from '../context/AppContext';
+import EnablonLinkButton from './EnablonLinkButton';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InfoIcon from '@mui/icons-material/Info';
@@ -56,7 +57,7 @@ function MeetingSetupPage() {
   const [attendeeDialog, setAttendeeDialog] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState('');
   const [newPersonName, setNewPersonName] = useState('');
-  const { currentMeeting, setCurrentMeeting, people, setPeople } = useAppContext();
+  const { currentMeeting, setCurrentMeeting, people, setPeople, loading: contextLoading } = useAppContext();
   
   // Get master isolations from localStorage
   const [masterIsolations, setMasterIsolations] = useState(() => {
@@ -64,8 +65,11 @@ function MeetingSetupPage() {
   });
 
   useEffect(() => {
-    if (!currentMeeting) navigate('/');
-  }, [currentMeeting, navigate]);
+    // Wait for the context to finish loading. currentMeeting starts as null
+    // and is populated asynchronously, so redirecting before the load settles
+    // bounces the user home on a refresh or a direct link to this page.
+    if (!contextLoading && !currentMeeting) navigate('/');
+  }, [currentMeeting, contextLoading, navigate]);
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -412,16 +416,22 @@ function MeetingSetupPage() {
               <Typography color="textSecondary" sx={{ mb: 3 }}>
                 File should contain an "ID" column to identify isolations
               </Typography>
-              <Button 
-                variant="contained" 
-                component="label" 
-                size="large"
-                startIcon={<CloudUploadIcon />}
-                disabled={loading}
-              >
-                {loading ? 'Processing...' : 'Select Excel File'}
-                <input type="file" hidden accept=".xlsx, .xls" onChange={handleFileUpload} />
-              </Button>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Button 
+                  variant="contained" 
+                  component="label" 
+                  size="large"
+                  startIcon={<CloudUploadIcon />}
+                  disabled={loading}
+                >
+                  {loading ? 'Processing...' : 'Select Excel File'}
+                  <input type="file" hidden accept=".xlsx, .xls" onChange={handleFileUpload} />
+                </Button>
+                <EnablonLinkButton />
+              </Box>
+              <Typography variant="caption" color="textSecondary" sx={{ mt: 2 }}>
+                Don't have the file yet? Export the LTI list from Enablon first, then upload it here.
+              </Typography>
               
               {loading && (
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 3 }}>
