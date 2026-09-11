@@ -683,6 +683,30 @@ class SharePointDocumentStorage {
   }
 
   /**
+   * Read a collection, reporting *why* it is empty.
+   *
+   * The plain getters coerce both "file absent" and "request failed" into an
+   * empty collection. Callers that cache the result then cannot tell a real
+   * empty list from an outage, and overwrite good local data with nothing.
+   *
+   * @returns {Promise<{ok: boolean, missing: boolean, data: *}>}
+   *   ok:false means the read failed and the value must not be trusted.
+   *   missing:true means the file genuinely does not exist yet.
+   */
+  async readCollection(fileName, empty = []) {
+    try {
+      const data = await this.readFile(fileName);
+      if (data === null || data === undefined) {
+        return { ok: true, missing: true, data: empty };
+      }
+      return { ok: true, missing: false, data };
+    } catch (error) {
+      console.warn(`Could not read ${fileName}:`, error.message);
+      return { ok: false, missing: false, data: empty, error: error.message };
+    }
+  }
+
+  /**
    * Merge two meeting lists, preferring entries from the first list.
    * Identity is the meeting id, falling back to timestamp then date for
    * records written before ids were assigned. A meeting with none of those

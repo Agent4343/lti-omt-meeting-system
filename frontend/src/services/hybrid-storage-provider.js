@@ -86,16 +86,15 @@ class HybridStorageProvider {
    */
   async getMeetings() {
     if (this.isSharePointEnabled()) {
-      try {
-        const meetings = await this.storageService.getMeetings();
-        // Update localStorage cache
-        this._setLocalStorage('savedMeetings', meetings);
-        return meetings;
-      } catch (error) {
-        console.warn('SharePoint unavailable, using localStorage cache:', error.message);
-        // Fallback to localStorage
-        return this._getLocalStorage('savedMeetings', []);
+      // readCollection distinguishes a failed read from a genuinely empty one.
+      // Caching the plain getter's result overwrote the local cache with an
+      // empty array whenever SharePoint was unreachable.
+      const result = await this.storageService.readCollection('meetings.json', []);
+      if (result.ok && !result.missing) {
+        this._setLocalStorage('savedMeetings', result.data);
+        return result.data;
       }
+      return this._getLocalStorage('savedMeetings', []);
     }
 
     return this._getLocalStorage('savedMeetings', []);
@@ -256,15 +255,12 @@ class HybridStorageProvider {
    */
   async getPeople() {
     if (this.isSharePointEnabled()) {
-      try {
-        const people = await this.storageService.getAttendees();
-        // Update localStorage cache
-        this._setLocalStorage('savedPeople', people);
-        return people;
-      } catch (error) {
-        console.warn('SharePoint unavailable, using localStorage cache:', error.message);
-        return this._getLocalStorage('savedPeople', []);
+      const result = await this.storageService.readCollection('attendees.json', []);
+      if (result.ok && !result.missing) {
+        this._setLocalStorage('savedPeople', result.data);
+        return result.data;
       }
+      return this._getLocalStorage('savedPeople', []);
     }
 
     return this._getLocalStorage('savedPeople', []);
@@ -382,13 +378,10 @@ class HybridStorageProvider {
    */
   async getIsolations() {
     if (this.isSharePointEnabled()) {
-      try {
-        const isolations = await this.storageService.getIsolations();
-        // Cache locally
-        this._setLocalStorage('currentMeetingIsolations', isolations);
-        return isolations;
-      } catch (error) {
-        console.warn('SharePoint unavailable, using localStorage cache:', error.message);
+      const result = await this.storageService.readCollection('current-isolations.json', []);
+      if (result.ok && !result.missing) {
+        this._setLocalStorage('currentMeetingIsolations', result.data);
+        return result.data;
       }
     }
 
@@ -508,14 +501,10 @@ class HybridStorageProvider {
    */
   async getResponses() {
     if (this.isSharePointEnabled()) {
-      try {
-        const responses = await this.storageService.getResponses();
-        if (responses && Object.keys(responses).length > 0) {
-          this._setLocalStorage('currentMeetingResponses', responses);
-        }
-        return responses;
-      } catch (error) {
-        console.warn('SharePoint unavailable, using localStorage cache:', error.message);
+      const result = await this.storageService.readCollection('current-responses.json', {});
+      if (result.ok && !result.missing) {
+        this._setLocalStorage('currentMeetingResponses', result.data);
+        return result.data;
       }
     }
     return this._getLocalStorage('currentMeetingResponses', {});
