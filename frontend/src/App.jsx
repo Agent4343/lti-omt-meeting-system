@@ -5,7 +5,7 @@ import ManagePeoplePage from './components/ManagePeoplePage';
 import MeetingPage from './components/MeetingPage';
 import MeetingSetupPage from './components/MeetingSetupPage';
 import ReviewPage from './components/ReviewPage';
-import MeetingSummaryPage from './components/MeetingSummaryPageNew';
+import ComprehensiveMeetingSummary from './components/ComprehensiveMeetingSummary';
 import PastMeetingsPage from './components/PastMeetingsPage';
 import LTIMasterListPage from './components/LTIMasterListPage';
 import MeetingCalendarPage from './components/MeetingCalendarPage';
@@ -36,7 +36,7 @@ function App() {
               <Route path="/home" element={<MeetingPage />} />
               <Route path="/setup" element={<MeetingSetupPage />} />
               <Route path="/review" element={<ReviewPage />} />
-              <Route path="/summary" element={<MeetingSummaryPage />} />
+              <Route path="/summary" element={<ComprehensiveMeetingSummary />} />
               <Route path="/past" element={<PastMeetingsPage />} />
               <Route path="/lti-master" element={<LTIMasterListPage />} />
               <Route path="/lti-dashboard" element={<LTIDashboard />} />

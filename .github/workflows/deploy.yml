@@ -1,55 +1,73 @@
-name: Build and Deploy Meeting System
+name: Build
+
+# The previous version of this workflow never ran: it triggered on `master`,
+# but the default branch is `main`. It also ran `npm test` in both packages,
+# where the frontend has no test script and the backend's is still the npm
+# default stub that exits 1 - so it would have failed had it ever fired.
+#
+# This builds what can actually be built. Add test steps here as suites appear;
+# see the note at the bottom of the job.
 
 on:
   push:
-    branches:
-      - master
+    branches: [main]
   pull_request:
-    branches:
-      - master
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  frontend:
+    name: Build frontend
     runs-on: ubuntu-latest
 
-    services:
-      mongo:
-        image: mongo:latest
-        ports:
-          - 27017:27017
-        options: --health-cmd "mongo --eval 'db.adminCommand('ping')'" --health-interval 10s --health-timeout 5s --health-retries 5
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm install
-
-      - name: Install frontend dependencies
+      - name: Install dependencies
         working-directory: ./frontend
-        run: npm install
+        run: npm ci --no-audit --no-fund
 
-      - name: Build frontend
+      - name: Build
         working-directory: ./frontend
+        # CI=true is already set by Actions. Note this does NOT currently fail
+        # on lint warnings: package.json defines no eslintConfig, so
+        # react-scripts has no rules to promote to errors.
         run: npm run build
 
-      - name: Run backend tests
-        working-directory: ./backend
-        run: npm test
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build
+          retention-days: 7
 
-      - name: Start backend server
-        working-directory: ./backend
-        run: node index.js &
-      
-      - name: Run frontend tests
-        working-directory: ./frontend
-        run: npm test
+      # No test step: neither package has a real suite yet. The highest-value
+      # first targets are the Excel import mapping and the localStorage <->
+      # SharePoint merge logic, both of which are pure functions.
 
-      # Add deployment steps here if you have a deployment target (e.g., upload to server, cloud, etc.)
+  backend:
+    name: Build backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci --no-audit --no-fund
+
+      - name: Check the server parses
+        working-directory: ./backend
+        run: node --check index.js
