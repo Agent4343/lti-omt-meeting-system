@@ -116,7 +116,11 @@ class HybridStorageProvider {
     }
 
     localMeetings.push(meetingData);
-    this._setLocalStorage('savedMeetings', localMeetings);
+    const localWrite = this._setLocalStorage('savedMeetings', localMeetings);
+    if (!localWrite.success) {
+      // Do not go on to report success: the meeting is not stored anywhere yet.
+      return { success: false, error: localWrite.error, quotaExceeded: localWrite.quotaExceeded };
+    }
 
     // Sync to SharePoint Document Library if available
     if (this.isSharePointEnabled()) {
@@ -398,7 +402,10 @@ class HybridStorageProvider {
    */
   async saveIsolations(isolations) {
     // Save to localStorage
-    this._setLocalStorage('currentMeetingIsolations', isolations);
+    const isolationWrite = this._setLocalStorage('currentMeetingIsolations', isolations);
+    if (!isolationWrite.success) {
+      return { success: false, error: isolationWrite.error, quotaExceeded: isolationWrite.quotaExceeded };
+    }
 
     // Sync to SharePoint Document Library
     if (this.isSharePointEnabled()) {
@@ -526,7 +533,10 @@ class HybridStorageProvider {
       ...responseData,
       timestamp: new Date().toISOString()
     };
-    this._setLocalStorage('currentMeetingResponses', responses);
+    const responseWrite = this._setLocalStorage('currentMeetingResponses', responses);
+    if (!responseWrite.success) {
+      return { success: false, error: responseWrite.error, quotaExceeded: responseWrite.quotaExceeded };
+    }
 
     if (this.isSharePointEnabled()) {
       try {
@@ -770,9 +780,33 @@ class HybridStorageProvider {
   _setLocalStorage(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      return { success: true };
     } catch (error) {
+      const quotaExceeded = this._isQuotaError(error);
       console.error(`Error writing to localStorage key "${key}":`, error);
+      return {
+        success: false,
+        quotaExceeded,
+        error: quotaExceeded
+          ? 'Browser storage is full. Export or delete older meetings to free space, ' +
+            'then try again. Nothing was saved.'
+          : error.message
+      };
     }
+  }
+
+  /**
+   * Storage-full detection. The name and code vary by browser, and Firefox
+   * reports code 1014 with its own name, so check all of them.
+   */
+  _isQuotaError(error) {
+    if (!error) return false;
+    return (
+      error.name === 'QuotaExceededError' ||
+      error.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      error.code === 22 ||
+      error.code === 1014
+    );
   }
 
   _addPendingChange(type, action, data) {
