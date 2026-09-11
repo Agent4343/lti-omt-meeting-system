@@ -36,6 +36,7 @@ import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useAppContext } from '../context/AppContext';
 import EnablonLinkButton from './EnablonLinkButton';
+import { parseSheet } from '../utils/ltiImport';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InfoIcon from '@mui/icons-material/Info';
@@ -73,79 +74,39 @@ function MeetingSetupPage() {
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
+    e.target.value = '';            // allow re-selecting the same file
     if (!file) return;
-    
+
     setLoading(true);
     setError('');
     setFileName(file.name);
-    
+
     const reader = new FileReader();
-    
+
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
         if (wb.SheetNames.length === 0) {
           throw new Error('Excel file has no sheets');
         }
-        
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        let uploadedData = XLSX.utils.sheet_to_json(ws);
-        
-        if (uploadedData.length === 0) {
-          throw new Error('No data found in the Excel file');
+
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+        // Shared with the LTI master list import: resolves the id column
+        // across the spellings exports use, rejects a file that does not look
+        // like isolation data, and converts Excel serial dates. This page used
+        // to accept any sheet with an ID column, so an unrelated spreadsheet
+        // could be loaded as a meeting's isolation list.
+        const parsed = parseSheet(rows);
+        if (!parsed.ok) {
+          throw new Error(parsed.reason);
         }
-        
-        // Check if the data has the required 'id' or 'ID' field
-        const hasLowercaseId = uploadedData[0].hasOwnProperty('id');
-        const hasUppercaseId = uploadedData[0].hasOwnProperty('ID');
-        
-        if (!hasLowercaseId && !hasUppercaseId) {
-          throw new Error('Excel file must contain an "ID" column');
-        }
-        
-        // Function to convert Excel date serial number to proper date string
-        const convertExcelDate = (value) => {
-          if (typeof value === 'number' && value > 25000 && value < 50000) {
-            // Excel date serial number (days since 1900-01-01, with leap year bug)
-            const excelEpoch = new Date(1900, 0, 1);
-            const date = new Date(excelEpoch.getTime() + (value - 2) * 24 * 60 * 60 * 1000);
-            return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
-          }
-          if (value instanceof Date) {
-            return value.toISOString().split('T')[0]; // Return YYYY-MM-DD format
-          }
-          if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-            return value.split('T')[0]; // Already in correct format, just remove time part
-          }
-          return value; // Return as-is if not a recognizable date format
-        };
-        
-        // Transform the data to handle ID field and date conversion
-        uploadedData = uploadedData.map(item => {
-          const newItem = { ...item };
-          
-          // Handle ID field
-          if (hasUppercaseId && !hasLowercaseId) {
-            newItem.id = item.ID;
-          }
-          
-          // Handle Planned Start Date conversion
-          const plannedDateFields = ['Planned Start Date', 'plannedStartDate', 'PlannedStartDate'];
-          plannedDateFields.forEach(field => {
-            if (newItem[field] !== undefined) {
-              newItem[field] = convertExcelDate(newItem[field]);
-            }
-          });
-          
-          return newItem;
-        });
-        
+
+        const uploadedData = parsed.items;
         setNewData(uploadedData);
 
-        // Compare with master list
+        // Compare against the previous meeting's list (masterIsolations),
+        // which is distinct from the curated ltiMasterList.
         const previousIds = new Set(masterIsolations.map(item => item.id));
         const newIds = new Set(uploadedData.map(item => item.id));
 
@@ -156,14 +117,19 @@ function MeetingSetupPage() {
         setRemoved(removedItems);
         setUploaded(true);
 
-        // Store in localStorage
         localStorage.setItem('addedIsolations', JSON.stringify(addedItems));
         localStorage.setItem('removedIsolations', JSON.stringify(removedItems));
         localStorage.setItem('currentMeetingIsolations', JSON.stringify(uploadedData));
-        
+
+        const skipped = parsed.skippedRows
+          ? ` ${parsed.skippedRows} row(s) without an id were skipped.`
+          : '';
+
         setSnackbar({
           open: true,
-          message: `File processed successfully. Found ${addedItems.length} new items and ${removedItems.length} removed items.`,
+          message:
+            `Loaded ${uploadedData.length} isolations using the "${parsed.idHeader}" column. ` +
+            `${addedItems.length} new, ${removedItems.length} removed.${skipped}`,
           severity: 'success'
         });
       } catch (err) {
@@ -178,17 +144,13 @@ function MeetingSetupPage() {
         setLoading(false);
       }
     };
-    
+
     reader.onerror = () => {
       setError('Error reading file');
       setLoading(false);
-      setSnackbar({
-        open: true,
-        message: 'Error reading file',
-        severity: 'error'
-      });
+      setSnackbar({ open: true, message: 'Error reading file', severity: 'error' });
     };
-    
+
     reader.readAsBinaryString(file);
   };
 

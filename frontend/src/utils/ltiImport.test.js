@@ -1,4 +1,7 @@
-import { resolveIdHeader, inspectSheet, buildImportPlan, normalizeRow, sameContent } from './ltiImport';
+import {
+  resolveIdHeader, inspectSheet, buildImportPlan, normalizeRow,
+  sameContent, convertExcelDate, parseSheet
+} from './ltiImport';
 
 const lti = (id, extra = {}) => ({
   ID: id,
@@ -199,5 +202,77 @@ describe('sameContent', () => {
 
   it('still detects a real difference', () => {
     expect(sameContent({ id: 'A', Risk: 'Low' }, { id: 'A', Risk: 'High' })).toBe(false);
+  });
+});
+
+describe('convertExcelDate', () => {
+  // Anchors checked against Excel: serial 1 is 1900-01-01, and the 1900
+  // leap-year bug means serials from 60 onward are offset by a day.
+  it('converts an Excel serial number to an ISO date', () => {
+    expect(convertExcelDate(45000)).toBe('2023-03-15');
+    expect(convertExcelDate(44927)).toBe('2023-01-01');
+  });
+
+  // The original implementation built the epoch with new Date(1900, 0, 1) -
+  // local midnight - then called toISOString(). In a zone that was east of UTC
+  // in 1900 that lands on the previous day: Australia/Sydney turned serial
+  // 45000 into 2023-03-14. Reassigning process.env.TZ mid-run does not
+  // reliably change Date behaviour, so this is pinned by running the suite
+  // under a non-UTC TZ in CI (see .github/workflows/deploy.yml) rather than by
+  // faking the zone here. These anchors then fail in that job if local time
+  // creeps back in.
+  it('is stable under the timezone the suite runs in', () => {
+    expect(convertExcelDate(45000)).toBe('2023-03-15');
+    expect(convertExcelDate(44927)).toBe('2023-01-01');
+    expect(convertExcelDate(25001)).toBe('1968-06-12');
+  });
+
+  it('passes through a string date already in ISO form', () => {
+    expect(convertExcelDate('2024-06-01')).toBe('2024-06-01');
+    expect(convertExcelDate('2024-06-01T09:30:00Z')).toBe('2024-06-01');
+  });
+
+  it('converts a Date object', () => {
+    expect(convertExcelDate(new Date(2024, 5, 1))).toBe('2024-06-01');
+  });
+
+  it('leaves values that are not dates alone', () => {
+    expect(convertExcelDate('Not started')).toBe('Not started');
+    expect(convertExcelDate(42)).toBe(42);          // too small to be a date
+    expect(convertExcelDate(2.05)).toBe(2.05);      // a unit price, not a date
+    expect(convertExcelDate(undefined)).toBeUndefined();
+  });
+});
+
+describe('date handling during import', () => {
+  it('converts serial dates on rows so age calculations work', () => {
+    const row = normalizeRow({ ID: 'CAHE-100-001', 'Planned Start Date': 45000 }, 'ID');
+    expect(row['Planned Start Date']).toBe('2023-03-15');
+  });
+
+  it('converts alternative date column spellings', () => {
+    const row = normalizeRow({ ID: 'A', 'Start Date': 44927, plannedStartDate: 45000 }, 'ID');
+    expect(row['Start Date']).toBe('2023-01-01');
+    expect(row.plannedStartDate).toBe('2023-03-15');
+  });
+});
+
+describe('parseSheet', () => {
+  it('returns normalized items without diffing', () => {
+    const r = parseSheet([lti('CAHE-100-001'), lti('CAHE-100-002')]);
+    expect(r.ok).toBe(true);
+    expect(r.items).toHaveLength(2);
+    expect(r.items[0].id).toBe('CAHE-100-001');
+  });
+
+  it('rejects the same files buildImportPlan rejects', () => {
+    expect(parseSheet([{ Name: 'x' }]).ok).toBe(false);
+    expect(parseSheet([]).ok).toBe(false);
+  });
+
+  it('reports skipped rows', () => {
+    const r = parseSheet([lti('CAHE-100-001'), { ...lti(''), Description: 'no id' }]);
+    expect(r.skippedRows).toBe(1);
+    expect(r.items).toHaveLength(1);
   });
 });

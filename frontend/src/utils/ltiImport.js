@@ -119,12 +119,70 @@ export const inspectSheet = (rows) => {
   return { ok: true, idHeader, headers };
 };
 
+// Date columns exporters commonly use. Excel hands these over as serial
+// numbers, so they have to be converted or every downstream age calculation
+// sees a five-digit number instead of a date.
+const DATE_FIELDS = [
+  'Planned Start Date',
+  'plannedStartDate',
+  'PlannedStartDate',
+  'planned_start_date',
+  'Start Date',
+  'startDate',
+  'Date Created',
+  'dateCreated',
+  'Planned End Date',
+  'plannedEndDate'
+];
+
+/**
+ * Convert an Excel cell to an ISO date string (YYYY-MM-DD).
+ *
+ * Excel counts days from 1900-01-01 and wrongly treats 1900 as a leap year,
+ * which the -2 offset absorbs. The arithmetic is done in UTC deliberately:
+ * building the epoch in local time and then calling toISOString() shifts the
+ * result back a day for anyone east of UTC.
+ *
+ * Values that are not recognisably dates are returned untouched.
+ */
+export const convertExcelDate = (value) => {
+  // Serial range covers roughly 1968-2036; outside it, a bare number is far
+  // more likely to be an ordinary figure than a date.
+  if (typeof value === 'number' && value > 25000 && value < 50000) {
+    const ms = Date.UTC(1900, 0, 1) + (value - 2) * 86400000;
+    return new Date(ms).toISOString().split('T')[0];
+  }
+
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return new Date(
+      Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())
+    ).toISOString().split('T')[0];
+  }
+
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.split('T')[0];
+  }
+
+  return value;
+};
+
+/** Convert every known date column on a row, in place on a copy. */
+export const normalizeDates = (item) => {
+  const out = { ...item };
+  DATE_FIELDS.forEach(field => {
+    if (out[field] !== undefined) {
+      out[field] = convertExcelDate(out[field]);
+    }
+  });
+  return out;
+};
+
 /**
  * Normalize one uploaded row into the shape the app stores.
  * Existing values are preserved; only the derived fields are added.
  */
 export const normalizeRow = (row, idHeader) => {
-  const item = { ...row };
+  const item = normalizeDates(row);
   const id = row[idHeader];
 
   item.id = id === undefined || id === null ? '' : String(id).trim();
@@ -166,6 +224,40 @@ export const sameContent = (a, b) => {
     if (l !== r) return false;
   }
   return true;
+};
+
+/**
+ * Validate and normalize a parsed sheet, without diffing it against anything.
+ *
+ * Used by the meeting setup page, which compares the upload against the
+ * previous meeting's list rather than the master list.
+ *
+ * @returns {{ ok: boolean, reason?: string, idHeader?: string, items?: Object[], skippedRows?: number }}
+ */
+export const parseSheet = (rows) => {
+  const inspection = inspectSheet(rows);
+  if (!inspection.ok) {
+    return { ok: false, reason: inspection.reason, headers: inspection.headers };
+  }
+
+  const normalized = rows.map(r => normalizeRow(r, inspection.idHeader));
+  const items = normalized.filter(i => i.id);
+
+  if (items.length === 0) {
+    return {
+      ok: false,
+      reason: `Column "${inspection.idHeader}" was found but every row is missing a value for it.`,
+      headers: inspection.headers
+    };
+  }
+
+  return {
+    ok: true,
+    idHeader: inspection.idHeader,
+    headers: inspection.headers,
+    items,
+    skippedRows: normalized.length - items.length
+  };
 };
 
 /**
@@ -225,4 +317,4 @@ export const buildImportPlan = (rows, currentItems = []) => {
   };
 };
 
-export const __TESTING__ = { ID_HEADERS, CORROBORATING_HEADERS, norm };
+export const __TESTING__ = { ID_HEADERS, CORROBORATING_HEADERS, DATE_FIELDS, norm };

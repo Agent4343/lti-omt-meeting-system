@@ -37,6 +37,15 @@ jobs:
         working-directory: ./frontend
         run: npm test
 
+      # Excel serial dates are converted via Date.UTC. An implementation that
+      # slips back to local time passes in UTC and is wrong everywhere east of
+      # it, so the suite is run again under a zone that exposes that.
+      - name: Test (non-UTC timezone)
+        working-directory: ./frontend
+        run: npm test
+        env:
+          TZ: Australia/Sydney
+
       - name: Build
         working-directory: ./frontend
         # CI=true is already set by Actions. Note this does NOT currently fail
