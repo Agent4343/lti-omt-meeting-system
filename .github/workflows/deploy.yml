@@ -33,6 +33,10 @@ jobs:
         working-directory: ./frontend
         run: npm ci --no-audit --no-fund
 
+      - name: Test
+        working-directory: ./frontend
+        run: npm test
+
       - name: Build
         working-directory: ./frontend
         # CI=true is already set by Actions. Note this does NOT currently fail
@@ -46,10 +50,6 @@ jobs:
           name: frontend-build
           path: frontend/build
           retention-days: 7
-
-      # No test step: neither package has a real suite yet. The highest-value
-      # first targets are the Excel import mapping and the localStorage <->
-      # SharePoint merge logic, both of which are pure functions.
 
   backend:
     name: Build backend

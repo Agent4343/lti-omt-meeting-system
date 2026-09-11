@@ -41,6 +41,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import EnablonLinkButton from './EnablonLinkButton';
+import { buildImportPlan } from '../utils/ltiImport';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import EmailIcon from '@mui/icons-material/Email';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -58,6 +59,8 @@ function LTIMasterListPage() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  // Parsed-and-diffed import awaiting confirmation; null when none is pending.
+  const [importPlan, setImportPlan] = useState(null);
   const [emailDialog, setEmailDialog] = useState(false);
   const [emailData, setEmailData] = useState({ to: '', subject: 'LTI Master List Update', text: '' });
   const [emailStatus, setEmailStatus] = useState({ loading: false, success: false, error: null });
@@ -462,83 +465,34 @@ function LTIMasterListPage() {
     });
   };
   
+  // Import runs in two steps: parse and diff into a plan, show it, and only
+  // write once the user confirms. The previous version replaced the master
+  // list immediately, which meant a wrong file or a mismatched ID column
+  // silently destroyed it.
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
+    e.target.value = '';            // allow re-selecting the same file
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const uploadedData = XLSX.utils.sheet_to_json(ws);
-        
-        if (uploadedData.length === 0) {
-          throw new Error('No data found in the Excel file');
-        }
-        
-        // Get current master list
-        const currentMasterList = [...ltiItems];
-        
-        // Create a map of current items by ID for easy lookup
-        const currentItemsMap = {};
-        currentMasterList.forEach(item => {
-          currentItemsMap[item.id] = item;
-        });
-        
-        // Create a map of uploaded items by ID
-        const uploadedItemsMap = {};
-        uploadedData.forEach(item => {
-          if (item.id) {
-            uploadedItemsMap[item.id] = item;
-          }
-        });
-        
-        // Identify new items (in uploaded file but not in current master list)
-        const newItems = uploadedData.filter(item => item.id && !currentItemsMap[item.id]);
-        
-        // Identify removed items (in current master list but not in uploaded file)
-        const removedItems = currentMasterList.filter(item => !uploadedItemsMap[item.id]);
-        
-        // Identify updated items (in both lists but with changes)
-        const updatedItems = uploadedData.filter(item => 
-          item.id && currentItemsMap[item.id] && JSON.stringify(item) !== JSON.stringify(currentItemsMap[item.id])
-        );
-        
-        // Process the uploaded data, ensuring correct property names
-        const processedData = uploadedData.map(item => {
-          const newItem = { ...item }; // Copy item
-          
-          // Map 'System/Equipment' from Excel to 'systemEquipment'
-          if (newItem['System/Equipment'] && !newItem.systemEquipment) {
-            newItem.systemEquipment = newItem['System/Equipment'];
-            // delete newItem['System/Equipment']; // Optional: remove the original property
-          }
-          
-          // Ensure required fields exist or have defaults
-          newItem.id = newItem.id || `LTI-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-          newItem.lastUpdated = new Date().toISOString().split('T')[0];
-          
-          // Ensure systemEquipment is defined, even if empty, for consistency
-          if (newItem.systemEquipment === undefined) {
-             newItem.systemEquipment = ''; 
-          }
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        if (!wb.SheetNames.length) throw new Error('The file contains no sheets.');
 
-          return newItem;
-        });
-        
-        // Update the master list
-        setLtiItems(processedData);
-        localStorage.setItem('ltiMasterList', JSON.stringify(processedData));
-        
-        // Show summary of changes
-        setSnackbar({
-          open: true,
-          message: `Import successful: ${newItems.length} new items, ${removedItems.length} removed items, ${updatedItems.length} updated items`,
-          severity: 'success'
-        });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        const plan = buildImportPlan(rows, ltiItems);
+
+        if (!plan.ok) {
+          setSnackbar({
+            open: true,
+            message: `${file.name}: ${plan.reason}`,
+            severity: 'error'
+          });
+          return;
+        }
+
+        setImportPlan({ ...plan, fileName: file.name, sheetName: wb.SheetNames[0] });
       } catch (error) {
         console.error('Error processing Excel file:', error);
         setSnackbar({
@@ -548,10 +502,29 @@ function LTIMasterListPage() {
         });
       }
     };
-    
+    reader.onerror = () => {
+      setSnackbar({ open: true, message: 'Could not read the file.', severity: 'error' });
+    };
+
     reader.readAsBinaryString(file);
   };
-  
+
+  const applyImport = () => {
+    if (!importPlan) return;
+
+    setLtiItems(importPlan.items);
+    localStorage.setItem('ltiMasterList', JSON.stringify(importPlan.items));
+
+    setSnackbar({
+      open: true,
+      message: `Imported ${importPlan.items.length} LTIs: ` +
+        `${importPlan.added.length} new, ${importPlan.updated.length} updated, ` +
+        `${importPlan.removed.length} removed.`,
+      severity: 'success'
+    });
+    setImportPlan(null);
+  };
+
   const exportToExcel = () => {
     if (ltiItems.length === 0) {
       setSnackbar({
@@ -636,12 +609,30 @@ function LTIMasterListPage() {
     }
   };
   
-  // Get table headers from the first item or use defaults
+  // Fields that exist to drive the UI, not to be shown as data columns.
+  const INTERNAL_FIELDS = new Set([
+    'hasRelatedIsolations',
+    'relatedIsolationIds',
+    'needsUpdate',
+    'systemEquipment'  // duplicate of the 'System/Equipment' column it is derived from
+  ]);
+
+  // Column set for the table.
+  // The id comes first: it is the LTI identifier and was previously filtered
+  // out entirely, leaving the list with no way to tell rows apart. Headers are
+  // the union across rows, because taking them from row 0 alone dropped any
+  // column the first row happened not to have.
   const getTableHeaders = () => {
-    if (ltiItems.length > 0) {
-      return Object.keys(ltiItems[0]).filter(key => key !== 'id');
+    if (ltiItems.length === 0) {
+      return ['id', 'description', 'status', 'category', 'lastUpdated'];
     }
-    return ['name', 'description', 'status', 'category', 'lastUpdated'];
+
+    const keys = new Set();
+    ltiItems.forEach(item => Object.keys(item || {}).forEach(k => keys.add(k)));
+    keys.delete('id');
+    INTERNAL_FIELDS.forEach(f => keys.delete(f));
+
+    return ['id', ...keys];
   };
   
   const tableHeaders = getTableHeaders();
@@ -738,7 +729,9 @@ function LTIMasterListPage() {
               <TableRow>
                 {tableHeaders.map((header) => (
                   <TableCell key={header} sx={{ fontWeight: 'bold' }}>
-                    {header.charAt(0).toUpperCase() + header.slice(1)}
+                    {header === 'id'
+                      ? 'LTI ID'
+                      : header.charAt(0).toUpperCase() + header.slice(1)}
                   </TableCell>
                 ))}
                 <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
@@ -992,6 +985,63 @@ function LTIMasterListPage() {
         </DialogActions>
       </Dialog>
       
+      {/* Import preview - nothing is written until this is confirmed. */}
+      <Dialog open={Boolean(importPlan)} onClose={() => setImportPlan(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirm import</DialogTitle>
+        <DialogContent>
+          <DialogContentText component="div" sx={{ mb: 2 }}>
+            <strong>{importPlan?.fileName}</strong>
+            {importPlan?.sheetName ? ` \u2014 sheet "${importPlan.sheetName}"` : ''}
+            <br />
+            Matched <strong>{importPlan?.items.length}</strong> rows using the{' '}
+            <code>{importPlan?.idHeader}</code> column.
+          </DialogContentText>
+
+          {importPlan?.removesMostOfList && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              This file removes <strong>{importPlan.removed.length}</strong> of{' '}
+              {importPlan.removed.length + importPlan.updated.length + importPlan.unchanged}{' '}
+              existing LTIs. If that is not what you expect, check you picked the
+              right export before continuing.
+            </Alert>
+          )}
+
+          {importPlan?.skippedRows > 0 && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {importPlan.skippedRows} row(s) have no value in the{' '}
+              <code>{importPlan.idHeader}</code> column and will be skipped.
+            </Alert>
+          )}
+
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+            <Chip color="success" label={`${importPlan?.added.length ?? 0} new`} />
+            <Chip color="info" label={`${importPlan?.updated.length ?? 0} updated`} />
+            <Chip
+              color={importPlan?.removed.length ? 'error' : 'default'}
+              label={`${importPlan?.removed.length ?? 0} removed`}
+            />
+            <Chip label={`${importPlan?.unchanged ?? 0} unchanged`} />
+          </Box>
+
+          {importPlan?.removed.length > 0 && (
+            <Typography variant="caption" color="text.secondary">
+              Removing: {importPlan.removed.slice(0, 8).map(i => i.id).join(', ')}
+              {importPlan.removed.length > 8 ? ` and ${importPlan.removed.length - 8} more` : ''}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportPlan(null)}>Cancel</Button>
+          <Button
+            onClick={applyImport}
+            variant="contained"
+            color={importPlan?.removesMostOfList ? 'warning' : 'primary'}
+          >
+            {importPlan?.removesMostOfList ? 'Import anyway' : 'Import'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Snackbar for notifications */}
       <Snackbar 
         open={snackbar.open} 
