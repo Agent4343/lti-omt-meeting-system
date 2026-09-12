@@ -49,8 +49,36 @@ const CORROBORATING_HEADERS = [
   'title'
 ];
 
+// Columns that carry the human-readable summary of the isolation, in
+// preference order. Resolved loosely, so 'DESCRIPTION' and 'Work  Description'
+// both match.
+const DESCRIPTION_HEADERS = [
+  'description',
+  'isolation description',
+  'work description',
+  'lti description',
+  'title',
+  'work title',
+  'details'
+];
+
 /** Normalize a header for loose comparison. */
 const norm = (h) => String(h).replace(/[\s_\r\n]+/g, ' ').trim().toLowerCase();
+
+/**
+ * First key of `obj` matching one of `candidates` (compared loosely) whose
+ * value is non-empty. Returns the real key so the caller reads the original.
+ */
+const findKey = (obj, candidates) => {
+  const keys = Object.keys(obj || {});
+  for (const candidate of candidates) {
+    const target = norm(candidate);
+    for (const key of keys) {
+      if (norm(key) === target && String(obj[key] ?? '').trim() !== '') return key;
+    }
+  }
+  return null;
+};
 
 /**
  * Find which column holds the LTI identifier.
@@ -178,6 +206,37 @@ export const normalizeDates = (item) => {
 };
 
 /**
+ * Add the fields the app reads, derived from whatever the spreadsheet called
+ * them. Mutates and returns `item`.
+ *
+ * Applied to BOTH sides of an import comparison. A record stored by an earlier
+ * version carries only the source column ('Description'), so comparing it
+ * against a freshly normalized record would otherwise show a difference on
+ * every row - the same false-change trap the 'ID' vs 'id' duplication caused.
+ */
+export const applyDerivedFields = (item) => {
+  if (item['System/Equipment'] && !item.systemEquipment) {
+    item.systemEquipment = item['System/Equipment'];
+  }
+  if (item.systemEquipment === undefined) {
+    item.systemEquipment = '';
+  }
+
+  // The review card and the meeting summary read `description`. Without this
+  // the reviewer sees nothing but an opaque isolation ID, and the summary
+  // printed "No description" against every row.
+  if (!item.description) {
+    const source = findKey(item, DESCRIPTION_HEADERS);
+    if (source) item.description = String(item[source]).trim();
+  }
+  if (item.description === undefined) {
+    item.description = '';
+  }
+
+  return item;
+};
+
+/**
  * Normalize one uploaded row into the shape the app stores.
  * Existing values are preserved; only the derived fields are added.
  */
@@ -194,12 +253,7 @@ export const normalizeRow = (row, idHeader) => {
     delete item[idHeader];
   }
 
-  if (item['System/Equipment'] && !item.systemEquipment) {
-    item.systemEquipment = item['System/Equipment'];
-  }
-  if (item.systemEquipment === undefined) {
-    item.systemEquipment = '';
-  }
+  applyDerivedFields(item);
 
   item.lastUpdated = new Date().toISOString().split('T')[0];
   return item;
@@ -295,7 +349,10 @@ export const buildImportPlan = (rows, currentItems = []) => {
   const updated = items.filter(i => {
     const existing = currentById.get(String(i.id));
     if (!existing) return false;
-    return !sameContent(i, existing);
+    // Derive on the stored copy too, so an older record is compared on the
+    // same terms rather than looking changed just because it predates a
+    // derived field.
+    return !sameContent(i, applyDerivedFields({ ...existing }));
   });
 
   const unchanged = items.length - added.length - updated.length;

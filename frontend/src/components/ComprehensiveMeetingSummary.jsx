@@ -51,6 +51,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import EmailIcon from '@mui/icons-material/Email';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { openEmailClient, generateAttendeeNotificationEmail, downloadAsFile } from '../utils/emailUtils';
+import { summarizeCompletion } from '../utils/reviewCompleteness';
 import { KEYS, readJSON } from '../utils/appStorage';
 
 function ComprehensiveMeetingSummary() {
@@ -69,7 +70,7 @@ function ComprehensiveMeetingSummary() {
       totalIsolationsReviewed: 0,
       criticalFindings: 0,
       actionItemsGenerated: 0,
-      meetingEfficiencyScore: 95
+      completion: { total: 0, complete: 0, incomplete: 0, percent: 100 }
     },
     riskAnalysis: {
       distribution: {
@@ -168,7 +169,9 @@ function ComprehensiveMeetingSummary() {
         totalIsolationsReviewed: actualTotal,
         criticalFindings: criticalCount,
         actionItemsGenerated: totalActionItems,
-        meetingEfficiencyScore: 95,
+        // Measured, not asserted. This tile used to read a hardcoded 95%
+        // even when nothing at all had been filled in.
+        completion: summarizeCompletion(isolations, responses),
         relatedIsolationWarnings: relatedIsolationWarnings
       },
       riskAnalysis: {
@@ -494,10 +497,14 @@ function ComprehensiveMeetingSummary() {
             <CardContent sx={{ textAlign: 'center', p: 3 }}>
               <TrendingUpIcon sx={{ fontSize: 56, mb: 2 }} />
               <Typography variant="h3" gutterBottom fontWeight="bold">
-                {meetingData.executiveSummary.meetingEfficiencyScore}%
+                {meetingData.executiveSummary.completion.percent}%
               </Typography>
-              <Typography variant="h6" gutterBottom>
-                Efficiency Score
+              <Typography variant="h6">
+                Reviewed
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                {meetingData.executiveSummary.completion.complete} of{' '}
+                {meetingData.executiveSummary.completion.total} complete
               </Typography>
             </CardContent>
           </Card>
@@ -1027,15 +1034,34 @@ function ComprehensiveMeetingSummary() {
           </Box>
         </DialogTitle>
         <DialogContent>
+          {/* Finalizing used to be possible with nothing reviewed at all, and
+              the dialog said nothing about it. Still allowed - a meeting can
+              legitimately be cut short - but no longer silent. */}
+          {meetingData.executiveSummary.completion.incomplete > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <strong>
+                {meetingData.executiveSummary.completion.incomplete} of{' '}
+                {meetingData.executiveSummary.completion.total} isolations are not fully reviewed.
+              </strong>{' '}
+              They will be recorded as incomplete. Go back to Review Isolations if you meant to
+              finish them first.
+            </Alert>
+          )}
           <DialogContentText>
-            This will save the meeting summary with all detailed analytics and recommendations. 
+            This will save the meeting summary with all detailed analytics and recommendations.
             The data will be available in the Past Meetings section for future reference and reporting.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmDialog(false)}>Cancel</Button>
-          <Button onClick={finalizeMeeting} variant="contained" color="success">
-            Save Meeting
+          <Button
+            onClick={finalizeMeeting}
+            variant="contained"
+            color={meetingData.executiveSummary.completion.incomplete > 0 ? 'warning' : 'success'}
+          >
+            {meetingData.executiveSummary.completion.incomplete > 0
+              ? 'Save Anyway'
+              : 'Save Meeting'}
           </Button>
         </DialogActions>
       </Dialog>

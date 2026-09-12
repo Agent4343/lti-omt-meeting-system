@@ -276,3 +276,90 @@ describe('parseSheet', () => {
     expect(r.items).toHaveLength(1);
   });
 });
+
+/**
+ * The review card and the meeting summary read `description`. Before this,
+ * a sheet with a 'Description' column produced records with no `description`
+ * key at all, and the summary printed "No description" against every row.
+ */
+describe('normalizeRow description mapping', () => {
+  it('maps the Description column onto description', () => {
+    const row = { ID: 'A-1', Description: 'Pump seal leak isolation' };
+    expect(normalizeRow(row, 'ID').description).toBe('Pump seal leak isolation');
+  });
+
+  it('matches the header regardless of case or spacing', () => {
+    expect(normalizeRow({ ID: 'A-1', DESCRIPTION: 'x' }, 'ID').description).toBe('x');
+    expect(normalizeRow({ ID: 'A-1', 'Work  Description': 'y' }, 'ID').description).toBe('y');
+  });
+
+  it('prefers a plain description over the alternates', () => {
+    const row = { ID: 'A-1', Title: 'short', Description: 'the real one' };
+    expect(normalizeRow(row, 'ID').description).toBe('the real one');
+  });
+
+  it('falls back to Title when there is no description column', () => {
+    expect(normalizeRow({ ID: 'A-1', Title: 'Valve isolation' }, 'ID').description)
+      .toBe('Valve isolation');
+  });
+
+  it('leaves an existing lowercase description alone', () => {
+    const row = { ID: 'A-1', description: 'already set', Title: 'ignore me' };
+    expect(normalizeRow(row, 'ID').description).toBe('already set');
+  });
+
+  it('skips a blank column and keeps looking', () => {
+    const row = { ID: 'A-1', Description: '   ', Title: 'the fallback' };
+    expect(normalizeRow(row, 'ID').description).toBe('the fallback');
+  });
+
+  it('defaults to an empty string when no column matches', () => {
+    expect(normalizeRow({ ID: 'A-1', 'Risk Level': 'High' }, 'ID').description).toBe('');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(normalizeRow({ ID: 'A-1', Description: '  padded  ' }, 'ID').description).toBe('padded');
+  });
+
+  // Adding a derived key must not make every row look changed on re-import.
+  it('does not make an unchanged row compare as different', () => {
+    const row = { ID: 'A-1', Description: 'Pump seal leak isolation' };
+    const first = normalizeRow(row, 'ID');
+    const second = normalizeRow({ ...row }, 'ID');
+    expect(sameContent(first, second)).toBe(true);
+  });
+});
+
+/**
+ * Records stored before `description` was derived carry only the source
+ * column. Re-importing the same file must not report all of them as updated.
+ */
+describe('buildImportPlan against records stored by an earlier version', () => {
+  const sheet = [
+    { ID: 'CAHE-100-001', Description: 'Pump seal leak', 'Risk Level': 'High' },
+    { ID: 'CAHE-100-002', Description: 'ESDV bypass', 'Risk Level': 'Medium' }
+  ];
+
+  it('reports no changes when only the derived fields are absent', () => {
+    // As an older version would have written them: no `description` key.
+    const stored = [
+      { id: 'CAHE-100-001', Description: 'Pump seal leak', 'Risk Level': 'High', lastUpdated: '2020-01-01' },
+      { id: 'CAHE-100-002', Description: 'ESDV bypass', 'Risk Level': 'Medium', lastUpdated: '2020-01-01' }
+    ];
+    const plan = buildImportPlan(sheet, stored);
+    expect(plan.ok).toBe(true);
+    expect(plan.added).toHaveLength(0);
+    expect(plan.removed).toHaveLength(0);
+    expect(plan.updated).toHaveLength(0);
+    expect(plan.unchanged).toBe(2);
+  });
+
+  it('still detects a genuine change to the description', () => {
+    const stored = [
+      { id: 'CAHE-100-001', Description: 'Something else entirely', 'Risk Level': 'High' },
+      { id: 'CAHE-100-002', Description: 'ESDV bypass', 'Risk Level': 'Medium' }
+    ];
+    const plan = buildImportPlan(sheet, stored);
+    expect(plan.updated.map(i => i.id)).toEqual(['CAHE-100-001']);
+  });
+});

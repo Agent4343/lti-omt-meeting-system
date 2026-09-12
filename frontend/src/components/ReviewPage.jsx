@@ -51,6 +51,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import IsolationQuestionnaire from './IsolationQuestionnaire';
 import { KEYS, readJSON } from '../utils/appStorage';
+import { isIsolationComplete } from '../utils/reviewCompleteness';
 
 function ReviewPage() {
   const navigate = useNavigate();
@@ -62,7 +63,10 @@ function ReviewPage() {
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [saveExitDialog, setSaveExitDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [saveProgress, setSaveProgress] = useState(false);
+  // On by default. A meeting is a live session over a dozen or more
+  // isolations; with this off, a refresh or a crash discards the lot, and
+  // nothing on screen warns the facilitator that it is off.
+  const [saveProgress, setSaveProgress] = useState(true);
 
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -127,7 +131,7 @@ function ReviewPage() {
   // State to store related isolations (based on 3-digit prefix)
   const [relatedIsolations, setRelatedIsolations] = useState([]);
 
-  // Calculate LTI age helper function - MUST be defined before isIsolationComplete
+  // Calculate LTI age helper function
   const calculateLTIAge = (plannedStartDate) => {
     if (!plannedStartDate) return 'Unknown';
 
@@ -150,31 +154,6 @@ function ReviewPage() {
     } catch (error) {
       return 'Invalid Date';
     }
-  };
-
-  // Check if an isolation response is complete - MUST be defined before filteredIsolations
-  const isIsolationComplete = (response) => {
-    if (!response) return false;
-
-    // Essential fields for streamlined questionnaire
-    // Overall Risk Level (required)
-    if (!response.riskLevel || response.riskLevel === 'N/A') return false;
-
-    // MOC Required (required)
-    if (!response.mocRequired || response.mocRequired === 'N/A') return false;
-
-    // If MOC is required, check if MOC number is provided
-    if (response.mocRequired === 'Yes' && !response.mocNumber) return false;
-
-    // Action Required (required)
-    if (!response.actionRequired || response.actionRequired === 'N/A') return false;
-
-    // WMS Manual Risk Assessment (required for compliance)
-    if (!response.corrosionRisk || response.corrosionRisk === 'N/A') return false;
-    if (!response.deadLegsRisk || response.deadLegsRisk === 'N/A') return false;
-    if (!response.automationLossRisk || response.automationLossRisk === 'N/A') return false;
-
-    return true;
   };
 
   // Check for related isolations when current isolation changes
@@ -353,14 +332,24 @@ function ReviewPage() {
   };
   
   const toggleSaveProgress = () => {
-    setSaveProgress(!saveProgress);
-    if (!saveProgress) {
-      // Save current progress when enabling auto-save
+    const enabled = !saveProgress;
+    setSaveProgress(enabled);
+
+    if (enabled) {
+      // Flush what is already on screen, so enabling mid-meeting does not
+      // leave the answers so far unsaved.
       localStorage.setItem('currentMeetingResponses', JSON.stringify(responses));
       setSnackbar({
         open: true,
         message: 'Auto-save enabled. Progress will be saved as you go.',
         severity: 'info'
+      });
+    } else {
+      // Turning it off is now the risky action, so say so plainly.
+      setSnackbar({
+        open: true,
+        message: 'Auto-save off. Answers from here on are only kept if you use Save & Exit.',
+        severity: 'warning'
       });
     }
   };

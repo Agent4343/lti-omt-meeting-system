@@ -170,9 +170,16 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
         )}
       </Box>
 
+      {/* What the isolation actually is. Without these two lines the reviewer
+          sees only the ID and has to cross-reference the spreadsheet. */}
       {isolation.description && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body1" sx={{ mb: 0.5 }}>
           {isolation.description}
+        </Typography>
+      )}
+      {isolation.systemEquipment && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {isolation.systemEquipment}
         </Typography>
       )}
 
