@@ -19,6 +19,19 @@ export const calculateLTIAge = (plannedStartDate) => {
   }
 
   try {
+    // A bare number is almost certainly an unconverted Excel serial. Passing
+    // it to Date() would treat it as milliseconds since 1970 - serial 45000
+    // becomes 45 seconds past the epoch and reports as ~56 years old, which
+    // then flags for six-month review.
+    if (typeof plannedStartDate === 'number') {
+      return {
+        days: 0,
+        display: 'Invalid Date',
+        category: 'unknown',
+        isSixMonthsPlus: false
+      };
+    }
+
     const startDate = new Date(plannedStartDate);
 
     // Validate date
@@ -32,7 +45,21 @@ export const calculateLTIAge = (plannedStartDate) => {
     }
 
     const currentDate = new Date();
-    const diffTime = Math.abs(currentDate - startDate);
+
+    // Not Math.abs: an isolation can be planned before it starts, and taking
+    // the absolute difference made a not-yet-started isolation look aged. One
+    // planned to begin in seven months was reported as seven months old and
+    // appeared on the Operations Manager review list.
+    if (startDate > currentDate) {
+      return {
+        days: 0,
+        display: 'Not started',
+        category: 'notstarted',
+        isSixMonthsPlus: false
+      };
+    }
+
+    const diffTime = currentDate - startDate;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     let display = '';

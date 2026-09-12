@@ -35,6 +35,7 @@ import BuildIcon from '@mui/icons-material/Build';
 import SecurityIcon from '@mui/icons-material/Security';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import { exportMeetingToPDF } from '../utils/pdfExport';
+import { calculateLTIAge } from '../utils/dateUtils';
 
 function OperationsManagerReviewPage() {
   const [reviewData, setReviewData] = useState({
@@ -100,7 +101,12 @@ function OperationsManagerReviewPage() {
         const plannedStartDate = new Date(plannedStartDateStr);
         if (isNaN(plannedStartDate.getTime())) return;
 
-        const ageInMonths = (new Date() - plannedStartDate) / (1000 * 60 * 60 * 24 * 30);
+        // Use the shared helper rather than a local 30-day-month calculation.
+        // The two disagreed between 180 and 182 days, so an isolation in that
+        // window was listed here as due for review while the dashboard count
+        // said it was not.
+        const ageInfo = calculateLTIAge(plannedStartDateStr);
+        const ageInMonths = Math.floor(ageInfo.days / 30);
 
         // Get response data for this isolation
         const response = responses[isolationId] || {};
@@ -119,7 +125,7 @@ function OperationsManagerReviewPage() {
                                 'N/A';
 
         // Check if isolation is over 6 months and not already added
-        if (ageInMonths >= 6 && !isolationsOver6Months.find(iso => iso.id === isolationId)) {
+        if (ageInfo.isSixMonthsPlus && !isolationsOver6Months.find(iso => iso.id === isolationId)) {
           const isolationData = {
             id: isolationId,
             description: isolation.description || isolation.Description || isolation.Title || isolation.title || isolation['System/Equipment'] || 'No description',
