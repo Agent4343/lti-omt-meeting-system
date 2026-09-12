@@ -43,10 +43,10 @@ import {
 import { useAppContext } from '../context/AppContext';
 import { exportMeetingToPDF } from '../utils/pdfExport';
 import { calculateLTIAge } from '../utils/dateUtils';
-import { exportAssetManagerToCSV } from '../utils/csvExport';
-import { openEmailClient, generateAssetManagerReportEmail, downloadAsFile } from '../utils/emailUtils';
+import { exportOperationsManagerToCSV } from '../utils/csvExport';
+import { openEmailClient, generateOperationsManagerReportEmail, downloadAsFile } from '../utils/emailUtils';
 
-const AssetManagerDashboard = () => {
+const OperationsManagerDashboard = () => {
   const { meetings } = useAppContext();
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedLTI, setSelectedLTI] = useState(null);
@@ -123,7 +123,7 @@ const AssetManagerDashboard = () => {
         lastSnapshotRef.current = snapshot;
 
         const totalLTIs = resolved.reduce((sum, m) => sum + (m.isolations?.length || 0), 0);
-        console.log(`📊 Asset Manager Dashboard: ${resolved.length} meetings, ${totalLTIs} LTIs`);
+        console.log(`📊 Operations Manager Dashboard: ${resolved.length} meetings, ${totalLTIs} LTIs`);
 
         setLocalMeetings(resolved);
       } catch (error) {
@@ -268,12 +268,12 @@ const AssetManagerDashboard = () => {
     setAgendaDialogOpen(true);
   };
 
-  // Export Asset Manager Report as PDF
+  // Export Operations Manager Report as PDF
   const handleExportReport = async () => {
     try {
       const reportData = {
         date: new Date().toISOString().split('T')[0],
-        attendees: ['Asset Manager', 'OMT Team'],
+        attendees: ['Operations Manager', 'OMT Team'],
         isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
           id: lti.id,
           description: lti.description,
@@ -286,7 +286,7 @@ const AssetManagerDashboard = () => {
             mocNumber: lti.mocNumber,
             partsRequired: lti.partsRequired,
             actionRequired: lti.actionRequired,
-            comments: `Age: ${lti.ageInfo.display}. ${lti.comments || 'Asset Manager Review Required.'}`
+            comments: `Age: ${lti.ageInfo.display}. ${lti.comments || 'Operations Manager Review Required.'}`
           };
           return acc;
         }, {}),
@@ -310,12 +310,12 @@ const AssetManagerDashboard = () => {
 
       const result = await exportMeetingToPDF(reportData);
       if (result.success) {
-        alert('Asset Manager Report exported successfully!');
+        alert('Operations Manager Report exported successfully!');
       } else {
         alert(`Error exporting report: ${result.message}`);
       }
     } catch (error) {
-      console.error('Error exporting Asset Manager Report:', error);
+      console.error('Error exporting Operations Manager Report:', error);
       alert('Error exporting report. Please try again.');
     }
   };
@@ -323,7 +323,7 @@ const AssetManagerDashboard = () => {
   // Export to CSV
   const handleExportCSV = () => {
     try {
-      const result = exportAssetManagerToCSV(processedLTIData, 'all');
+      const result = exportOperationsManagerToCSV(processedLTIData, 'all');
       if (result.success) {
         alert('CSV exported successfully!');
       } else {
@@ -335,7 +335,7 @@ const AssetManagerDashboard = () => {
     }
   };
 
-  // Email Asset Manager Report
+  // Email Operations Manager Report
   const handleEmailReport = () => {
     try {
       const stats = {
@@ -348,10 +348,10 @@ const AssetManagerDashboard = () => {
         urgentAction: dashboardStats.urgentAction,
         sixMonthsPlusLTIs: dashboardStats.sixMonthsPlusLTIs
       };
-      const subject = `Asset Manager LTI Status Report - ${new Date().toLocaleDateString()}`;
-      const body = generateAssetManagerReportEmail(processedLTIData, stats);
+      const subject = `Operations Manager LTI Status Report - ${new Date().toLocaleDateString()}`;
+      const body = generateOperationsManagerReportEmail(processedLTIData, stats);
       openEmailClient('', subject, body);
-      alert('Email client opened with Asset Manager report');
+      alert('Email client opened with Operations Manager report');
     } catch (error) {
       console.error('Error generating email:', error);
       alert('Error generating email. Please try again.');
@@ -372,7 +372,7 @@ const AssetManagerDashboard = () => {
         },
         ltis: processedLTIData
       };
-      const filename = `Asset_Manager_Report_${new Date().toISOString().split('T')[0]}.json`;
+      const filename = `Operations_Manager_Report_${new Date().toISOString().split('T')[0]}.json`;
       downloadAsFile(JSON.stringify(reportData, null, 2), filename, 'application/json');
       alert(`File "${filename}" downloaded. Upload it to your SharePoint document library.`);
     } catch (error) {
@@ -386,7 +386,7 @@ const AssetManagerDashboard = () => {
     try {
       const agendaData = {
         date: new Date().toISOString().split('T')[0],
-        attendees: ['Asset Manager', 'OMT Team', 'Operations Manager'],
+        attendees: ['Operations Manager', 'OMT Team', 'Operations Manager'],
         isolations: dashboardStats.sixMonthsPlusLTIs.map(lti => ({
           id: lti.id,
           description: lti.description,
@@ -436,11 +436,11 @@ const AssetManagerDashboard = () => {
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <BusinessIcon sx={{ mr: 2, color: 'primary.main', fontSize: 40 }} />
-          Asset Manager Dashboard
+          Operations Manager Dashboard
         </Typography>
         
         <Alert severity="warning" sx={{ mb: 3 }}>
-          <strong>WMS Manual Requirement:</strong> LTIs over 6 months require Asset Manager review every 6 months. 
+          <strong>WMS Manual Requirement:</strong> LTIs over 6 months require Operations Manager review every 6 months. 
           This dashboard tracks {dashboardStats.sixMonthsPlus} LTIs requiring management attention.
         </Alert>
       </Box>
@@ -551,7 +551,7 @@ const AssetManagerDashboard = () => {
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
             <WarningIcon sx={{ mr: 1, color: 'warning.main' }} />
-            LTIs Over 6 Months - Requiring Asset Manager Review ({dashboardStats.sixMonthsPlus})
+            LTIs Over 6 Months - Requiring Operations Manager Review ({dashboardStats.sixMonthsPlus})
           </Typography>
           
           {dashboardStats.sixMonthsPlus > 0 ? (
@@ -642,7 +642,7 @@ const AssetManagerDashboard = () => {
             </TableContainer>
           ) : (
             <Alert severity="success">
-              <strong>Good News:</strong> No LTIs are currently over 6 months old requiring Asset Manager review.
+              <strong>Good News:</strong> No LTIs are currently over 6 months old requiring Operations Manager review.
             </Alert>
           )}
         </CardContent>
@@ -781,12 +781,12 @@ const AssetManagerDashboard = () => {
         fullWidth
       >
         <DialogTitle>
-          Asset Manager Review Meeting Agenda
+          Operations Manager Review Meeting Agenda
         </DialogTitle>
         <DialogContent>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h5" gutterBottom>
-              Asset Manager Review Meeting
+              Operations Manager Review Meeting
             </Typography>
             <Typography variant="body1">
               <strong>Date:</strong> {new Date().toLocaleDateString()}
@@ -878,7 +878,7 @@ const AssetManagerDashboard = () => {
                 <ListItemText primary="Assign owners and timelines for critical LTIs" />
               </ListItem>
               <ListItem>
-                <ListItemText primary="Schedule next Asset Manager review (6 months)" />
+                <ListItemText primary="Schedule next Operations Manager review (6 months)" />
               </ListItem>
             </List>
           </Paper>
@@ -894,4 +894,4 @@ const AssetManagerDashboard = () => {
   );
 };
 
-export default AssetManagerDashboard;
+export default OperationsManagerDashboard;

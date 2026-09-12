@@ -62,8 +62,8 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
     deadLegsRisk: 'N/A',
     automationLossRisk: 'N/A',
 
-    // Asset Manager Review
-    assetManagerReviewRequired: 'N/A',
+    // Operations Manager Review
+    operationsManagerReviewRequired: 'N/A',
     resolutionStrategy: 'N/A',
 
     // Action Items
@@ -178,7 +178,7 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
       {/* 6-Month Alert */}
       {isSixMonthsPlus && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          <strong>6+ Months:</strong> Asset Manager review required per WMS Manual.
+          <strong>6+ Months:</strong> Operations Manager review required per WMS Manual.
         </Alert>
       )}
 
@@ -450,12 +450,12 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
         </AccordionDetails>
       </Accordion>
 
-      {/* Asset Manager Review (only for 6+ month LTIs) */}
+      {/* Operations Manager Review (only for 6+ month LTIs) */}
       {isSixMonthsPlus && (
         <Paper sx={{ p: 2, mb: 2, bgcolor: '#fff3e0', border: '1px solid #ff9800' }}>
           <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
             <BusinessIcon sx={{ mr: 1, color: 'warning.main' }} />
-            Asset Manager Review
+            Operations Manager Review
             <Chip label="6+ MONTHS" color="warning" size="small" sx={{ ml: 1 }} />
           </Typography>
           <Grid container spacing={2}>
@@ -464,8 +464,8 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
                 <FormLabel>Review Status</FormLabel>
                 <RadioGroup
                   row
-                  value={formData.assetManagerReviewRequired}
-                  onChange={(e) => handleChange('assetManagerReviewRequired', e.target.value)}
+                  value={formData.operationsManagerReviewRequired}
+                  onChange={(e) => handleChange('operationsManagerReviewRequired', e.target.value)}
                 >
                   <FormControlLabel value="Required" control={<Radio size="small" />} label="Required" />
                   <FormControlLabel value="Scheduled" control={<Radio size="small" />} label="Scheduled" />

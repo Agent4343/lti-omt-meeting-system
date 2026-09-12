@@ -10,8 +10,8 @@ import PastMeetingsPage from './components/PastMeetingsPage';
 import LTIMasterListPage from './components/LTIMasterListPage';
 import MeetingCalendarPage from './components/MeetingCalendarPage';
 import LTIDashboard from './components/LTIDashboard';
-import AssetManagerReviewPage from './components/AssetManagerReviewPage';
-import AssetManagerDashboard from './components/AssetManagerDashboardSimple';
+import OperationsManagerReviewPage from './components/OperationsManagerReviewPage';
+import OperationsManagerDashboard from './components/OperationsManagerDashboard';
 import RemovedLTIsPage from './components/RemovedLTIsPage';
 import NavigationHeader from './components/NavigationHeader';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -40,8 +40,8 @@ function App() {
               <Route path="/past" element={<PastMeetingsPage />} />
               <Route path="/lti-master" element={<LTIMasterListPage />} />
               <Route path="/lti-dashboard" element={<LTIDashboard />} />
-              <Route path="/asset-manager-review" element={<AssetManagerReviewPage />} />
-              <Route path="/asset-manager-dashboard" element={<AssetManagerDashboard />} />
+              <Route path="/operations-manager-review" element={<OperationsManagerReviewPage />} />
+              <Route path="/operations-manager-dashboard" element={<OperationsManagerDashboard />} />
               <Route path="/removed-ltis" element={<RemovedLTIsPage />} />
               <Route path="/calendar" element={<MeetingCalendarPage />} />
               <Route path="*" element={<NotFoundPage />} />

@@ -821,10 +821,10 @@ export const exportMeetingToPDF = async (meeting) => {
 };
 
 /**
- * Asset Manager Report PDF Export
- * Professional report for Asset Manager dashboard data
+ * Operations Manager Report PDF Export
+ * Professional report for Operations Manager dashboard data
  */
-export class AssetManagerReportPDF {
+export class OperationsManagerReportPDF {
   constructor() {
     this.doc = null;
     this.pageWidth = 210;
@@ -862,7 +862,7 @@ export class AssetManagerReportPDF {
     // Main title
     this.doc.setFontSize(28);
     this.doc.setFont(undefined, 'bold');
-    this.doc.text('Asset Manager Report', this.margin, 38);
+    this.doc.text('Operations Manager Report', this.margin, 38);
 
     // Subtitle
     this.doc.setFontSize(14);
@@ -1124,7 +1124,7 @@ export class AssetManagerReportPDF {
       this.doc.setTextColor(128, 128, 128);
       this.doc.setFont(undefined, 'normal');
 
-      this.doc.text('LTI OMT Meeting System - Asset Manager Report', this.margin, this.pageHeight - 10);
+      this.doc.text('LTI OMT Meeting System - Operations Manager Report', this.margin, this.pageHeight - 10);
       this.doc.text(`Page ${i} of ${pageCount}`, this.pageWidth - this.margin, this.pageHeight - 10, { align: 'right' });
       this.doc.text(`Generated: ${new Date().toLocaleString()}`, this.pageWidth / 2, this.pageHeight - 10, { align: 'center' });
     }
@@ -1172,20 +1172,20 @@ export class AssetManagerReportPDF {
       this.addFooter();
 
       // Save
-      const filename = `Asset_Manager_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const filename = `Operations_Manager_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       this.doc.save(filename);
 
-      return { success: true, message: 'Asset Manager Report exported successfully!' };
+      return { success: true, message: 'Operations Manager Report exported successfully!' };
     } catch (error) {
-      console.error('Asset Manager Report PDF error:', error);
+      console.error('Operations Manager Report PDF error:', error);
       return { success: false, message: `Error generating report: ${error.message}` };
     }
   }
 }
 
-// Export convenience function for Asset Manager Report
-export const exportAssetManagerReport = (reportData) => {
-  const reportPDF = new AssetManagerReportPDF();
+// Export convenience function for Operations Manager Report
+export const exportOperationsManagerReport = (reportData) => {
+  const reportPDF = new OperationsManagerReportPDF();
   return reportPDF.generateReport(reportData);
 };
 

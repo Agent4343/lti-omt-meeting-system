@@ -131,12 +131,12 @@ export const exportMeetingToCSV = (meetingData) => {
 };
 
 /**
- * Export Asset Manager dashboard data to CSV
+ * Export Operations Manager dashboard data to CSV
  * @param {Array} ltis - Array of LTI data
  * @param {string} filterType - Type of filter applied
  * @returns {Object} Result with success status
  */
-export const exportAssetManagerToCSV = (ltis, filterType = 'all') => {
+export const exportOperationsManagerToCSV = (ltis, filterType = 'all') => {
   try {
     const columns = [
       { key: 'id', label: 'LTI ID' },
@@ -169,7 +169,7 @@ export const exportAssetManagerToCSV = (ltis, filterType = 'all') => {
 
     const csvContent = convertToCSV(data, columns);
     const dateStr = new Date().toISOString().split('T')[0];
-    downloadCSV(csvContent, `Asset-Manager-Report-${filterType}-${dateStr}.csv`);
+    downloadCSV(csvContent, `Operations-Manager-Report-${filterType}-${dateStr}.csv`);
 
     return { success: true, message: 'CSV exported successfully' };
   } catch (error) {

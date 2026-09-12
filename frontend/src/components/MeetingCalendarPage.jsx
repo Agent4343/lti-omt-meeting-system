@@ -54,10 +54,10 @@ function MeetingCalendarPage() {
   
   const generateMeetings = () => {
     const regularMeetings = generateRegularMeetings(year, startDate);
-    const assetManagerMeetings = generateAssetManagerMeetings(year, startDate);
+    const operationsManagerMeetings = generateOperationsManagerMeetings(year, startDate);
     
     // Combine and sort all meetings by date
-    const allMeetings = [...regularMeetings, ...assetManagerMeetings].sort((a, b) => 
+    const allMeetings = [...regularMeetings, ...operationsManagerMeetings].sort((a, b) => 
       new Date(a.date) - new Date(b.date)
     );
     
@@ -103,26 +103,26 @@ function MeetingCalendarPage() {
     return meetings;
   };
   
-  const generateAssetManagerMeetings = (year, startDate) => {
+  const generateOperationsManagerMeetings = (year, startDate) => {
     const meetings = [];
     const currentDate = new Date(startDate);
     
     // Set to 1:00 PM
     currentDate.setHours(13, 0, 0, 0);
     
-    // Generate semi-annual Asset Manager meetings
+    // Generate semi-annual Operations Manager meetings
     for (let month = 0; month < 12; month += 6) {
       const meetingDate = new Date(year, month, 15, 13, 0, 0);
       
       // Only include meetings after the start date
       if (meetingDate >= startDate) {
         meetings.push({
-          id: `asset-manager-${meetingDate.toISOString()}`,
+          id: `operations-manager-${meetingDate.toISOString()}`,
           date: new Date(meetingDate),
           type: 'Review',
-          title: 'Asset Manager Review',
+          title: 'Operations Manager Review',
           time: '1:00 PM',
-          attendees: 'Team Members, Asset Manager',
+          attendees: 'Team Members, Operations Manager',
           location: 'Conference Room B'
         });
       }

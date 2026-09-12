@@ -59,7 +59,7 @@ function NavigationHeader() {
     { text: 'Past Meetings', icon: <HistoryIcon />, path: '/past', primary: true },
     { text: 'LTI Master List', icon: <ListAltIcon />, path: '/lti-master', primary: true },
     { text: 'LTI Dashboard', icon: <DashboardIcon />, path: '/lti-dashboard' },
-    { text: 'Asset Manager', icon: <SupervisorAccountIcon />, path: '/asset-manager-dashboard', primary: true },
+    { text: 'Operations Manager', icon: <SupervisorAccountIcon />, path: '/operations-manager-dashboard', primary: true },
     { text: 'Removed LTIs', icon: <DeleteSweepIcon />, path: '/removed-ltis' },
     { text: 'Meeting Calendar', icon: <CalendarMonthIcon />, path: '/calendar' },
   ];

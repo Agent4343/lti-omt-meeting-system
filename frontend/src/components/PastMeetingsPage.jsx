@@ -1066,11 +1066,14 @@ function PastMeetingsPage() {
                                         </Grid>
                                       )}
 
-                                      {/* Asset Manager Review */}
-                                      {(response.assetManagerReviewRequired === 'Yes' || response.resolutionStrategy) && (
+                                      {/* Operations Manager Review */}
+                                      {/* Records saved before the role was renamed carry
+                                          assetManagerReviewRequired; read both so past
+                                          meetings do not all display as N/A. */}
+                                      {((response.operationsManagerReviewRequired ?? response.assetManagerReviewRequired) === 'Yes' || response.resolutionStrategy) && (
                                         <Grid item xs={12}>
                                           <Typography variant="body2" color="text.secondary" gutterBottom>
-                                            <strong>Asset Manager Review:</strong> {response.assetManagerReviewRequired || 'N/A'}
+                                            <strong>Operations Manager Review:</strong> {response.operationsManagerReviewRequired ?? response.assetManagerReviewRequired ?? 'N/A'}
                                           </Typography>
                                           {response.resolutionStrategy && response.resolutionStrategy !== 'N/A' && (
                                             <Typography variant="body2" color="text.secondary" gutterBottom>

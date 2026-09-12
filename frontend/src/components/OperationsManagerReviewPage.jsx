@@ -36,7 +36,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import { exportMeetingToPDF } from '../utils/pdfExport';
 
-function AssetManagerReviewPage() {
+function OperationsManagerReviewPage() {
   const [reviewData, setReviewData] = useState({
     reviewDate: new Date().toISOString().split('T')[0],
     reviewPeriod: '6-months',
@@ -54,13 +54,13 @@ function AssetManagerReviewPage() {
   const [filterPeriod, setFilterPeriod] = useState('6-months');
 
   useEffect(() => {
-    // Load meeting data and filter for Asset Manager review
-    loadAssetManagerReviewData();
+    // Load meeting data and filter for Operations Manager review
+    loadOperationsManagerReviewData();
   }, [filterPeriod]);
 
-  const loadAssetManagerReviewData = () => {
+  const loadOperationsManagerReviewData = () => {
     try {
-      console.log('Loading Asset Manager review data...');
+      console.log('Loading Operations Manager review data...');
 
       // Get all meetings from localStorage - check multiple possible keys
       const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
@@ -240,16 +240,16 @@ function AssetManagerReviewPage() {
       });
 
     } catch (error) {
-      console.error('Error loading Asset Manager review data:', error);
+      console.error('Error loading Operations Manager review data:', error);
     }
   };
 
   const handleExportPDF = async () => {
     try {
       // Create a meeting-like object for PDF export
-      const assetManagerMeeting = {
+      const operationsManagerMeeting = {
         date: reviewData.reviewDate,
-        attendees: ['Asset Manager', 'OMT Team'],
+        attendees: ['Operations Manager', 'OMT Team'],
         isolations: reviewData.isolationsOver6Months.map(iso => ({
           id: iso.id,
           description: iso.description,
@@ -260,7 +260,7 @@ function AssetManagerReviewPage() {
             riskLevel: iso.riskLevel,
             mocRequired: iso.mocRequired,
             mocNumber: iso.mocNumber,
-            comments: `Asset Manager Review - Age: ${iso.ageInMonths} months. ${iso.escalationReason || 'Escalated per WMS Manual requirements.'}`
+            comments: `Operations Manager Review - Age: ${iso.ageInMonths} months. ${iso.escalationReason || 'Escalated per WMS Manual requirements.'}`
           };
           return acc;
         }, {}),
@@ -282,15 +282,15 @@ function AssetManagerReviewPage() {
         }
       };
 
-      const result = await exportMeetingToPDF(assetManagerMeeting);
+      const result = await exportMeetingToPDF(operationsManagerMeeting);
       
       if (result.success) {
-        alert('Asset Manager Review PDF exported successfully!');
+        alert('Operations Manager Review PDF exported successfully!');
       } else {
         alert(`Error exporting PDF: ${result.message}`);
       }
     } catch (error) {
-      console.error('Error exporting Asset Manager Review PDF:', error);
+      console.error('Error exporting Operations Manager Review PDF:', error);
       alert('Error exporting PDF. Please try again.');
     }
   };
@@ -311,7 +311,7 @@ function AssetManagerReviewPage() {
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
           <BusinessIcon sx={{ mr: 2, color: 'warning.main' }} />
-          Asset Manager 6-Month Review
+          Operations Manager 6-Month Review
         </Typography>
         <Typography variant="subtitle1" color="text.secondary">
           WMS Manual Compliance - Review of LTIs unresolved after six months
@@ -349,7 +349,7 @@ function AssetManagerReviewPage() {
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button
                 variant="outlined"
-                onClick={loadAssetManagerReviewData}
+                onClick={loadOperationsManagerReviewData}
                 startIcon={<ScheduleIcon />}
               >
                 Refresh Data
@@ -373,8 +373,8 @@ function AssetManagerReviewPage() {
           <strong>WMS Manual Requirement:</strong>
         </Typography>
         <Typography>
-          • LTIs unresolved after six months must be escalated to the Asset Manager for evaluation<br/>
-          • The OMT team and Asset Manager meet every six months to review unresolved or critical LTIs<br/>
+          • LTIs unresolved after six months must be escalated to the Operations Manager for evaluation<br/>
+          • The OMT team and Operations Manager meet every six months to review unresolved or critical LTIs<br/>
           • Focus on prioritizing resolution, risk mitigation, or disconnection through MOC process
         </Typography>
       </Alert>
@@ -392,7 +392,7 @@ function AssetManagerReviewPage() {
                 {reviewData.isolationsOver6Months.length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Requiring Asset Manager review
+                Requiring Operations Manager review
               </Typography>
             </CardContent>
           </Card>
@@ -483,7 +483,7 @@ function AssetManagerReviewPage() {
       <Paper sx={{ mb: 3 }}>
         <Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
           <Typography variant="h6">
-            LTIs Requiring Asset Manager Review (6+ Months)
+            LTIs Requiring Operations Manager Review (6+ Months)
           </Typography>
         </Box>
         <TableContainer>
@@ -589,10 +589,10 @@ function AssetManagerReviewPage() {
         </Paper>
       )}
 
-      {/* Action Items for Asset Manager */}
+      {/* Action Items for Operations Manager */}
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Recommended Actions for Asset Manager
+          Recommended Actions for Operations Manager
         </Typography>
         <List>
           <ListItem>
@@ -619,7 +619,7 @@ function AssetManagerReviewPage() {
             </ListItemIcon>
             <ListItemText
               primary="Schedule Next Review"
-              secondary="Set up next 6-month Asset Manager review meeting"
+              secondary="Set up next 6-month Operations Manager review meeting"
             />
           </ListItem>
           <ListItem>
@@ -637,4 +637,4 @@ function AssetManagerReviewPage() {
   );
 }
 
-export default AssetManagerReviewPage;
+export default OperationsManagerReviewPage;
