@@ -53,6 +53,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import * as XLSX from 'xlsx';
 import { exportMeetingToPDF } from '../utils/pdfExport';
 import { openEmailClient, generateMeetingSummaryEmail, downloadAsFile } from '../utils/emailUtils';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function PastMeetingsPage() {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ function PastMeetingsPage() {
   const [tabValue, setTabValue] = useState(0);
 
   useEffect(() => {
-    const savedMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
+    const savedMeetings = readJSON(KEYS.PAST_MEETINGS, []);
     setPastMeetings(savedMeetings);
     setFilteredMeetings(savedMeetings);
   }, []);

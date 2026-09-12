@@ -39,6 +39,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import HistoryIcon from '@mui/icons-material/History';
 import { openEmailClient, downloadAsFile } from '../utils/emailUtils';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function RemovedLTIsPage() {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ function RemovedLTIsPage() {
   // Load and calculate removed LTIs from past meetings
   useEffect(() => {
     const calculateRemovedLTIs = () => {
-      const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
+      const pastMeetings = readJSON(KEYS.PAST_MEETINGS, []);
 
       // Sort meetings by date (oldest first)
       const sortedMeetings = [...pastMeetings].sort((a, b) =>

@@ -50,6 +50,7 @@ import KeyboardIcon from '@mui/icons-material/Keyboard';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import IsolationQuestionnaire from './IsolationQuestionnaire';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function ReviewPage() {
   const navigate = useNavigate();
@@ -102,12 +103,12 @@ function ReviewPage() {
 
   useEffect(() => {
     // Load isolations from localStorage
-    const data = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
+    const data = readJSON(KEYS.CURRENT_MEETING_ISOLATIONS, []);
     if (data.length === 0) navigate('/setup');
     setIsolations(data);
     
     // Load any saved responses from current meeting
-    const savedResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
+    const savedResponses = readJSON(KEYS.CURRENT_MEETING_RESPONSES, {});
     setResponses(savedResponses);
     
     // If there are saved responses, ask if the user wants to continue from where they left off

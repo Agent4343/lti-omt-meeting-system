@@ -45,6 +45,7 @@ import { exportMeetingToPDF } from '../utils/pdfExport';
 import { calculateLTIAge } from '../utils/dateUtils';
 import { exportOperationsManagerToCSV } from '../utils/csvExport';
 import { openEmailClient, generateOperationsManagerReportEmail, downloadAsFile } from '../utils/emailUtils';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 const OperationsManagerDashboard = () => {
   const { meetings } = useAppContext();
@@ -61,12 +62,12 @@ const OperationsManagerDashboard = () => {
   useEffect(() => {
     const loadMeetingsData = () => {
       try {
-        const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings') || '[]');
-        const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings') || '[]');
-        const ltiMasterList = JSON.parse(localStorage.getItem('ltiMasterList') || '[]');
-        const currentMeetingIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations') || '[]');
-        const currentMeetingResponses = JSON.parse(localStorage.getItem('currentMeetingResponses') || '{}');
-        const currentMeetingInfo = JSON.parse(localStorage.getItem('currentMeetingInfo') || 'null');
+        const savedMeetings = readJSON(KEYS.SAVED_MEETINGS, []);
+        const pastMeetings = readJSON(KEYS.PAST_MEETINGS, []);
+        const ltiMasterList = readJSON(KEYS.LTI_MASTER_LIST, []);
+        const currentMeetingIsolations = readJSON(KEYS.CURRENT_MEETING_ISOLATIONS, []);
+        const currentMeetingResponses = readJSON(KEYS.CURRENT_MEETING_RESPONSES, {});
+        const currentMeetingInfo = readJSON(KEYS.CURRENT_MEETING_INFO, null);
 
         const allMeetings = [];
         const seenMeetingKeys = new Set();

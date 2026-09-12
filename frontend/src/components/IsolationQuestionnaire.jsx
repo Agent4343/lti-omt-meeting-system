@@ -33,6 +33,7 @@ import BuildIcon from '@mui/icons-material/Build';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import ReportIcon from '@mui/icons-material/Report';
 import BusinessIcon from '@mui/icons-material/Business';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function IsolationQuestionnaire({ isolation, onDataChange }) {
   // Default form state
@@ -88,7 +89,7 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
     setLoadedFromPrevious(false);
 
     // Check for existing data in current meeting first
-    const savedResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
+    const savedResponses = readJSON(KEYS.CURRENT_MEETING_RESPONSES, {});
     const existingData = savedResponses[isolation?.id];
 
     if (existingData) {
@@ -99,7 +100,7 @@ function IsolationQuestionnaire({ isolation, onDataChange }) {
       }));
     } else {
       // No current data - try to load from previous meeting
-      const previousResponses = JSON.parse(localStorage.getItem('previousMeetingResponses')) || {};
+      const previousResponses = readJSON(KEYS.PREVIOUS_MEETING_RESPONSES, {});
       const previousData = previousResponses[isolation?.id];
 
       if (previousData) {

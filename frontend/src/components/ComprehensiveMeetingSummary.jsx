@@ -51,6 +51,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import EmailIcon from '@mui/icons-material/Email';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { openEmailClient, generateAttendeeNotificationEmail, downloadAsFile } from '../utils/emailUtils';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function ComprehensiveMeetingSummary() {
   const navigate = useNavigate();
@@ -82,9 +83,9 @@ function ComprehensiveMeetingSummary() {
 
   useEffect(() => {
     // Load meeting info and responses from localStorage
-    const savedInfo = JSON.parse(localStorage.getItem('currentMeetingInfo'));
-    const savedResponses = JSON.parse(localStorage.getItem('currentMeetingResponses'));
-    const savedIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations'));
+    const savedInfo = readJSON(KEYS.CURRENT_MEETING_INFO, null);
+    const savedResponses = readJSON(KEYS.CURRENT_MEETING_RESPONSES, null);
+    const savedIsolations = readJSON(KEYS.CURRENT_MEETING_ISOLATIONS, null);
     
     if (!savedInfo || !savedIsolations) {
       navigate('/');
@@ -212,8 +213,8 @@ function ComprehensiveMeetingSummary() {
   };
   
   const finalizeMeeting = async () => {
-    const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
-    const savedIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
+    const pastMeetings = readJSON(KEYS.PAST_MEETINGS, []);
+    const savedIsolations = readJSON(KEYS.CURRENT_MEETING_ISOLATIONS, []);
 
     // Create comprehensive meeting summary with all isolation data
     const meeting = {
@@ -614,8 +615,8 @@ function ComprehensiveMeetingSummary() {
                     
                     {/* Get all isolations from localStorage and display them */}
                     {(() => {
-                      const savedIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
-                      const savedResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
+                      const savedIsolations = readJSON(KEYS.CURRENT_MEETING_ISOLATIONS, []);
+                      const savedResponses = readJSON(KEYS.CURRENT_MEETING_RESPONSES, {});
                       
                       // Function to check for related isolations based on first 3 digits after CAHE-
                       const checkForRelatedIsolations = (isolations, currentIsolation) => {

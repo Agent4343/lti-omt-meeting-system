@@ -60,7 +60,11 @@ export const calculateLTIAge = (plannedStartDate) => {
     }
 
     const diffTime = currentDate - startDate;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // Whole days elapsed, floored. Math.ceil made the threshold
+    // nondeterministic: an isolation open for exactly 182 days rounded up to
+    // 183 as soon as a millisecond elapsed, so whether it counted as
+    // six-months-plus depended on when the page happened to render.
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     let display = '';
     let category = '';

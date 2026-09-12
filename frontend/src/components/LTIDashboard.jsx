@@ -28,6 +28,7 @@ import {
   Tooltip
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { KEYS, readJSON } from '../utils/appStorage';
 import {
   Dashboard as DashboardIcon,
   TrendingDown as TrendingDownIcon,
@@ -78,8 +79,8 @@ function LTIDashboard() {
     setLoading(true);
     
     // Get all past meetings and current meeting data
-    const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
-    const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
+    const pastMeetings = readJSON(KEYS.PAST_MEETINGS, []);
+    const savedMeetings = readJSON(KEYS.SAVED_MEETINGS, []);
     
     // Combine all meetings for comprehensive analysis
     const allMeetings = [...pastMeetings, ...savedMeetings];

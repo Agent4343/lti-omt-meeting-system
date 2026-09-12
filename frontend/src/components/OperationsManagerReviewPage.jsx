@@ -36,6 +36,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import { exportMeetingToPDF } from '../utils/pdfExport';
 import { calculateLTIAge } from '../utils/dateUtils';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function OperationsManagerReviewPage() {
   const [reviewData, setReviewData] = useState({
@@ -64,11 +65,11 @@ function OperationsManagerReviewPage() {
       console.log('Loading Operations Manager review data...');
 
       // Get all meetings from localStorage - check multiple possible keys
-      const savedMeetings = JSON.parse(localStorage.getItem('savedMeetings')) || [];
-      const pastMeetings = JSON.parse(localStorage.getItem('pastMeetings')) || [];
-      const ltiMasterList = JSON.parse(localStorage.getItem('ltiMasterList')) || [];
-      const currentMeetingIsolations = JSON.parse(localStorage.getItem('currentMeetingIsolations')) || [];
-      const currentMeetingResponses = JSON.parse(localStorage.getItem('currentMeetingResponses')) || {};
+      const savedMeetings = readJSON(KEYS.SAVED_MEETINGS, []);
+      const pastMeetings = readJSON(KEYS.PAST_MEETINGS, []);
+      const ltiMasterList = readJSON(KEYS.LTI_MASTER_LIST, []);
+      const currentMeetingIsolations = readJSON(KEYS.CURRENT_MEETING_ISOLATIONS, []);
+      const currentMeetingResponses = readJSON(KEYS.CURRENT_MEETING_RESPONSES, {});
 
       console.log('Found saved meetings:', savedMeetings.length);
       console.log('Found past meetings:', pastMeetings.length);

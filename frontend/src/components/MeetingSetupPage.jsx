@@ -41,6 +41,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InfoIcon from '@mui/icons-material/Info';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function MeetingSetupPage() {
   const navigate = useNavigate();
@@ -62,7 +63,7 @@ function MeetingSetupPage() {
   
   // Get master isolations from localStorage
   const [masterIsolations, setMasterIsolations] = useState(() => {
-    return JSON.parse(localStorage.getItem('masterIsolations')) || [];
+    return readJSON(KEYS.MASTER_ISOLATIONS, []);
   });
 
   useEffect(() => {

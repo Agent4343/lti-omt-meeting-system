@@ -47,6 +47,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import WarningIcon from '@mui/icons-material/Warning';
 import * as XLSX from 'xlsx';
+import { KEYS, readJSON } from '../utils/appStorage';
 
 function LTIMasterListPage() {
   const navigate = useNavigate();
@@ -127,7 +128,7 @@ function LTIMasterListPage() {
   
   useEffect(() => {
     // Load LTI items from localStorage
-    let savedItems = JSON.parse(localStorage.getItem('ltiMasterList')) || [];
+    let savedItems = readJSON(KEYS.LTI_MASTER_LIST, []);
     
     // If no items exist, create sample data
     if (savedItems.length === 0) {
